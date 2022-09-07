@@ -32,6 +32,7 @@ setup(
     entry_points={
         "console_scripts": [
             "m6Acalling=m6a_calling.cli:main",
+            "m6adata=m6a_calling.m6adata:main",
         ],
     },
     install_requires=requirements,
