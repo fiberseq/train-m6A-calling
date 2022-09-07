@@ -31,7 +31,7 @@ setup(
     description="m6A calling from PacBio data using ML.",
     entry_points={
         "console_scripts": [
-            "m6a-calling=m6a_calling.cli:main",
+            "m6Acalling=m6a_calling.cli:main",
         ],
     },
     install_requires=requirements,
