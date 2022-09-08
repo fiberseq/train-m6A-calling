@@ -77,15 +77,20 @@ class SMRTpileup:
     m6a_calls: np.ndarray
     label: int
 
-    def __init__(self, fiber_data, bam):
+    def __init__(self, fiber_data, bam, force_negative=False):
         self.subreads = []
         self.ccs_name = fiber_data["fiber"]
         for rec in bam.fetch(contig=self.ccs_name):
             self.subreads.append(SMRTdata(rec))
         self.sequence = fiber_data["fiber_sequence"]
         # check for empty case
-        if type(fiber_data["m6a"]) == float:
-            self.m6a_calls = np.array([], dtype=D_TYPE)
+        if type(fiber_data["m6a"]) == float or force_negative:
+            at_index = [
+                pos
+                for pos, char in enumerate(self.sequence)
+                if char == "A" or char == "T"
+            ]
+            self.m6a_calls = np.array(at_index, dtype=D_TYPE)
             self.label = 0
         else:
             self.m6a_calls = np.fromstring(fiber_data["m6a"], sep=",", dtype=D_TYPE)
@@ -245,10 +250,10 @@ def read_bam(bam_file):
     return pysam.AlignmentFile(bam_file, check_sq=False)
 
 
-def make_kinetic_data(bam, fiber_data):
+def make_kinetic_data(bam, fiber_data, args):
     data = []
-    for idx, fiber_data in enumerate(tqdm.tqdm(fiber_data.to_dict("records"))):
-        kinetic_data = SMRTpileup(fiber_data, bam)
+    for fiber_data in tqdm.tqdm(fiber_data.to_dict("records")):
+        kinetic_data = SMRTpileup(fiber_data, bam, force_negative=args.force_negative)
         data += list(kinetic_data.get_m6a_call_kinetics())
     logging.info(f"Found {len(data)} kinetic data points.")
     return data
@@ -262,12 +267,13 @@ def main():
     parser.add_argument("bam", help="Input BAM file from actc")
     parser.add_argument("all", help="Input fiberseq all table")
     parser.add_argument("-o", "--out", help="Output pickle file", default=None)
+    parser.add_argument("-f", "--force-negative", action="store_true")
     args = parser.parse_args()
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
     fiber_data = read_fiber_data(args.all)
     bam = read_bam(args.bam)
-    data = make_kinetic_data(bam, fiber_data)
+    data = make_kinetic_data(bam, fiber_data, args)
     if args.out is not None:
         with open(args.out, "wb") as f:
             pickle.dump(data, f)
