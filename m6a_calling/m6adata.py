@@ -239,8 +239,8 @@ def read_bam(bam_file):
     Returns:
         pysam.AlignmentFile: handle for the bam file
     """
-    assert os.path.exists(
-        bam_file + ".bai"
+    assert os.path.exists(bam_file + ".bai") or os.path.exists(
+        bam_file + ".csi"
     ), f"index file {bam_file}.bai does not exist"
     return pysam.AlignmentFile(bam_file, check_sq=False)
 
