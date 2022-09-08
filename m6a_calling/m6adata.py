@@ -8,6 +8,7 @@ from dataclasses import dataclass, fields
 import logging
 import pandas as pd
 import os
+import pickle
 
 D_TYPE = np.int64
 
@@ -70,7 +71,7 @@ class SMRTdata:
 class SMRTpileup:
     """A class for creating a pileup of all the kinetic data associated with PacBio subreads over position(s)."""
 
-    subreads: list(SMRTdata)
+    subreads: SMRTdata
     sequence: str
     ccs_name: str
     m6a_calls: np.ndarray
@@ -164,6 +165,7 @@ class SMRTmatrix:
     ccs: str  # name of the ccs read
     m6a_call_base: str  # base that is called as m6A
     m6a_call_position: int  # position of the m6A call in the ccs read
+    strand: str  # strand of the m6A call
     ip: np.ndarray  # inter pulse durations (IPD)
     pw: np.matrix  # pulse width
     base: np.matrix  # sequence bases at this position
@@ -183,17 +185,37 @@ class SMRTmatrix:
         self.label = label
         self.subread_count = ip.shape[0]
         self.ccs = ccs
-        self.m6a_call_base = m6a_call_base
+        self.m6a_call_base = "A"
         self.m6a_call_position = m6a_call_position
+        self.strand = "+"
+
         # matrixes
-        self.ip = ip
-        self.pw = pw
-        self.base = base
-        self.offset = offset
+        if m6a_call_base == "T":
+            self.strand = "-"
+            self.ip = np.fliplr(ip)
+            self.pw = np.fliplr(pw)
+            self.base = SMRTmatrix.revcomp_base_matrix(base)
+            self.offset = np.fliplr(offset) * -1
+        else:
+            self.ip = ip
+            self.pw = pw
+            self.base = base
+            self.offset = offset
 
     def pprint(self):
         for field in fields(self):
             print(f"{field.name}:\n{getattr(self, field.name)}\n")
+
+    def revcomp_base_matrix(mat):
+        A = mat == "A"
+        T = mat == "T"
+        C = mat == "C"
+        G = mat == "G"
+        mat[A] = "T"
+        mat[T] = "A"
+        mat[C] = "G"
+        mat[G] = "C"
+        return np.fliplr(mat)
 
 
 def read_fiber_data(fiber_data_file):
@@ -225,9 +247,10 @@ def read_bam(bam_file):
 
 def make_kinetic_data(bam, fiber_data):
     data = []
-    for fiber_data in tqdm.tqdm(fiber_data.to_dict("records")):
+    for idx, fiber_data in enumerate(tqdm.tqdm(fiber_data.to_dict("records"))):
         kinetic_data = SMRTpileup(fiber_data, bam)
         data += list(kinetic_data.get_m6a_call_kinetics())
+    logging.info(f"Found {len(data)} kinetic data points.")
     return data
 
 
@@ -238,10 +261,16 @@ def main():
     )
     parser.add_argument("bam", help="Input BAM file from actc")
     parser.add_argument("all", help="Input fiberseq all table")
+    parser.add_argument("-o", "--out", help="Output pickle file", default=None)
     args = parser.parse_args()
+    log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
+    logging.basicConfig(format=log_format, level=logging.INFO)
     fiber_data = read_fiber_data(args.all)
     bam = read_bam(args.bam)
     data = make_kinetic_data(bam, fiber_data)
+    if args.out is not None:
+        with open(args.out, "wb") as f:
+            pickle.dump(data, f)
 
 
 if __name__ == "__main__":
