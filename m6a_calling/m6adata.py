@@ -90,7 +90,11 @@ class SMRTpileup:
                 for pos, char in enumerate(self.sequence)
                 if char == "A" or char == "T"
             ]
-            self.m6a_calls = np.array(at_index, dtype=D_TYPE)
+            self.m6a_calls = np.random.choice(
+                np.array(at_index, dtype=D_TYPE),
+                size=int(len(at_index) / 40),
+                replace=False,
+            )
             self.label = 0
         else:
             self.m6a_calls = np.fromstring(fiber_data["m6a"], sep=",", dtype=D_TYPE)
