@@ -84,7 +84,7 @@ class SMRTpileup:
             self.subreads.append(SMRTdata(rec))
         self.sequence = fiber_data["fiber_sequence"]
         # check for empty case
-        if type(fiber_data["m6a"]) == float or force_negative:
+        if force_negative:
             at_index = [
                 pos
                 for pos, char in enumerate(self.sequence)
@@ -96,8 +96,12 @@ class SMRTpileup:
                 replace=False,
             )
             self.label = 0
+        elif type(fiber_data["m6a"]) == float:
+            return None
         else:
             self.m6a_calls = np.fromstring(fiber_data["m6a"], sep=",", dtype=D_TYPE)
+            if self.m6a_calls.shape[0] < min_calls:
+                return None
             self.label = 1
 
     def get_smrt_kinetics_window(self, position, window_size=15, keep_all=False):
@@ -258,6 +262,8 @@ def make_kinetic_data(bam, fiber_data, args):
     data = []
     for fiber_data in tqdm.tqdm(fiber_data.to_dict("records")):
         kinetic_data = SMRTpileup(fiber_data, bam, force_negative=args.force_negative)
+        if kinetic_data is None:
+            continue
         for t in kinetic_data.get_m6a_call_kinetics():
             if t is not None:
                 data.append(t)
