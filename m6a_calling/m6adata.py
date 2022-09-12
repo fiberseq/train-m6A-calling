@@ -77,7 +77,7 @@ class SMRTpileup:
     m6a_calls: np.ndarray
     label: int
 
-    def __init__(self, fiber_data, bam, force_negative=False):
+    def __init__(self, fiber_data, bam, force_negative=False, min_calls=25):
         self.subreads = []
         self.ccs_name = fiber_data["fiber"]
         for rec in bam.fetch(contig=self.ccs_name):
@@ -260,6 +260,13 @@ def make_kinetic_data(bam, fiber_data, args):
         kinetic_data = SMRTpileup(fiber_data, bam, force_negative=args.force_negative)
         data += list(kinetic_data.get_m6a_call_kinetics())
     logging.info(f"Found {len(data)} kinetic data points.")
+    out = {0: 0, 1: 0, "None": 0}
+    for d in data:
+        if d.label is None:
+            out["None"] += 1
+        else:
+            out[d.label] += 1
+    logging.info(f"Kinetic data labels found: {out}")
     return data
 
 
