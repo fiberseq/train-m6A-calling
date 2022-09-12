@@ -263,7 +263,7 @@ def make_kinetic_data(bam, fiber_data, args):
     data = []
     for fiber_data in tqdm.tqdm(fiber_data.to_dict("records")):
         kinetic_data = SMRTpileup(fiber_data, bam, force_negative=args.force_negative)
-        if kinetic_data is None:
+        if kinetic_data.m6a_calls is None:
             continue
         for t in kinetic_data.get_m6a_call_kinetics():
             if t is not None:
