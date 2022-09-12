@@ -97,13 +97,13 @@ class SMRTpileup:
             )
             self.label = 0
         elif type(fiber_data["m6a"]) == float:
-            return None
+            self.m6a_calls = None
         else:
             self.m6a_calls = np.fromstring(fiber_data["m6a"], sep=",", dtype=D_TYPE)
             self.label = 1
 
         if self.m6a_calls is None or self.m6a_calls.shape[0] < min_calls:
-            return None
+            self.m6a_calls = None
 
     def get_smrt_kinetics_window(self, position, window_size=15, keep_all=False):
         modded_base = self.sequence[position]
