@@ -77,14 +77,14 @@ class SMRTpileup:
     m6a_calls: np.ndarray
     label: int
 
-    def __init__(self, fiber_data, bam, force_negative=False):
+    def __init__(self, fiber_data, bam, force_negative=False, min_calls=25):
         self.subreads = []
         self.ccs_name = fiber_data["fiber"]
         for rec in bam.fetch(contig=self.ccs_name):
             self.subreads.append(SMRTdata(rec))
         self.sequence = fiber_data["fiber_sequence"]
         # check for empty case
-        if type(fiber_data["m6a"]) == float or force_negative:
+        if force_negative:
             at_index = [
                 pos
                 for pos, char in enumerate(self.sequence)
@@ -96,9 +96,14 @@ class SMRTpileup:
                 replace=False,
             )
             self.label = 0
+        elif type(fiber_data["m6a"]) == float:
+            self.m6a_calls = None
         else:
             self.m6a_calls = np.fromstring(fiber_data["m6a"], sep=",", dtype=D_TYPE)
             self.label = 1
+
+        if self.m6a_calls is None or self.m6a_calls.shape[0] < min_calls:
+            self.m6a_calls = None
 
     def get_smrt_kinetics_window(self, position, window_size=15, keep_all=False):
         modded_base = self.sequence[position]
@@ -258,8 +263,19 @@ def make_kinetic_data(bam, fiber_data, args):
     data = []
     for fiber_data in tqdm.tqdm(fiber_data.to_dict("records")):
         kinetic_data = SMRTpileup(fiber_data, bam, force_negative=args.force_negative)
-        data += list(kinetic_data.get_m6a_call_kinetics())
+        if kinetic_data.m6a_calls is None:
+            continue
+        for t in kinetic_data.get_m6a_call_kinetics():
+            if t is not None:
+                data.append(t)
     logging.info(f"Found {len(data)} kinetic data points.")
+    out = {0: 0, 1: 0, "None": 0}
+    for d in data:
+        if d.label is None:
+            out["None"] += 1
+        else:
+            out[d.label] += 1
+    logging.info(f"Kinetic data labels found: {out}")
     return data
 
 
