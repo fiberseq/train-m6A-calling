@@ -98,7 +98,7 @@ def m6AGenerator(data_path, random_state=None, pin_memory=True,
     y_val = train_val_data['y_val']
 
     print(f"Training features shape {X_train.shape}, training labels shape: {y_train.shape}")
-    print(f"Validation features shape {X_val.shape}, training labels shape: {y_val.shape}")
+    print(f"Validation features shape {X_val.shape}, validation labels shape: {y_val.shape}")
 
     # Get the training data generator
     X_gen = DataGenerator(X_train,
@@ -310,7 +310,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--train_data',
         type=str,
-        default="../data/ML_feats_and_labels_m6A_all.npz",
+        default="../data/m6A_train.npz",
         help="path to the training npz file. Default is in the data directory"
     )
     
