@@ -1,4 +1,4 @@
-name: /net/noble/vol1/home/anupamaj/miniconda3/m6a-cpu
+name: m6a-cpu
 channels:
   - pytorch
   - defaults
