@@ -1,4 +1,4 @@
-name: /net/noble/vol1/home/anupamaj/miniconda3/m6a-cpu
+name: m6a-cpu
 channels:
   - pytorch
   - defaults
@@ -120,4 +120,4 @@ dependencies:
   - zstd=1.5.2=ha4553b6_0
   - pip:
     - torchsummary==1.5.1
-prefix: /net/noble/vol1/home/anupamaj/miniconda3/m6a-cpu
+prefix: m6a-cpu
