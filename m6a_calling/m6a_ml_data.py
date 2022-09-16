@@ -318,21 +318,21 @@ if __name__ == '__main__':
     parser.add_argument(
         '--positive_pickle',
         type=str,
-        default="data/PositiveSMRTmatrix.pkl",
+        default="../data/PositiveSMRTmatrix.pkl",
         help="path to the positive sample pickle file."
     )
 
     parser.add_argument(
         '--negative_pickle',
         type=str,
-        default='data/LargeNegativeSMRTmatrix.pkl',
+        default='../data/LargeNegativeSMRTmatrix.pkl',
         help="path to the negative sample pickle file."
     )
 
     parser.add_argument(
         '--save_path_prefix',
         type=str,
-        default="data/",
+        default="../data/",
         help="Where do you want to save the data. Default is current directory"
     )
 
