@@ -1,4 +1,4 @@
-name: /net/noble/vol1/home/anupamaj/miniconda3/m6a-gpu
+name: m6a-gpu
 channels:
   - pytorch
   - defaults
