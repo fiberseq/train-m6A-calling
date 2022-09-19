@@ -1,0 +1,21 @@
+name: m6A-data
+channels:
+    - conda-forge
+    - bioconda
+    - defaults
+dependencies:
+    - tqdm
+    - numba>=0.53
+    - pandas>=1.4
+    - numpy>=1.22
+    - numba 
+    - pysam>=0.19.1
+    - sphinx==4.2.0
+    - docutils==0.17
+    - rstcheck==5.0.0
+    - scikit-learn
+    - pip
+    - spyder
+    - pip:
+          - sphinx_rtd_theme
+          - readthedocs-sphinx-search
