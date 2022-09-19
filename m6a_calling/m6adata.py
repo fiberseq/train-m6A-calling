@@ -265,6 +265,7 @@ def extend_calls(row, buffer=5):
     )
     assert len(calls) == len(labels)
     assert labels.max() < seq.shape[0]
+    assert len(calls) >= len(row["m6a"])
     # print(labels)
     # print(calls)
     return {"labels": labels, "calls": calls}
@@ -284,7 +285,7 @@ def read_fiber_data(fiber_data_file):
     for col in ["m6a", "nuc_starts", "nuc_lengths"]:
         df[col].fillna("", inplace=True)
         df[col] = df[col].apply(lambda x: np.fromstring(x, sep=",", dtype=D_TYPE))
-    df = df[(df.nuc_starts.apply(len) > 0) & (df.m6a.apply(len) > 0)]
+    df = df.loc[(df.nuc_starts.apply(len) > 0) & (df.m6a.apply(len) > 0)]
 
     calls = pd.DataFrame(list(df.apply(extend_calls, axis=1)))
     assert len(calls) == len(df)
