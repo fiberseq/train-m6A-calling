@@ -268,6 +268,7 @@ def extend_calls(row, buffer=5):
     assert len(calls) >= len(row["m6a"])
     # print(labels)
     # print(calls)
+    print(len(calls))
     return {"labels": labels, "calls": calls}
 
 
