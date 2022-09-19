@@ -286,6 +286,7 @@ def read_fiber_data(fiber_data_file):
         df[col].fillna("", inplace=True)
         df[col] = df[col].apply(lambda x: np.fromstring(x, sep=",", dtype=D_TYPE))
     df = df.loc[(df.nuc_starts.apply(len) > 0) & (df.m6a.apply(len) > 0)]
+    logging.info(f"Filtered to {len(df)} fibers")
 
     calls = pd.DataFrame(list(df.apply(extend_calls, axis=1)))
     assert len(calls) == len(df)
