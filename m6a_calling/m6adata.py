@@ -80,7 +80,7 @@ class SMRTpileup:
     sequence: str
     ccs_name: str
     m6a_calls: np.ndarray
-    label: int
+    labels: int
 
     def __init__(
         self,
@@ -95,30 +95,28 @@ class SMRTpileup:
             self.subreads.append(SMRTdata(rec))
         self.sequence = fiber_data["fiber_sequence"]
         # check for empty case
-        if force_negative:
-            at_index = [
-                pos
-                for pos, char in enumerate(self.sequence)
-                if char == "A" or char == "T"
-            ]
-            self.m6a_calls = np.random.choice(
-                np.array(at_index, dtype=D_TYPE),
-                size=int(len(at_index) / 40),
-                replace=False,
-            )
-            self.label = 0
-        elif type(fiber_data["m6a"]) == float:
-            self.m6a_calls = None
-        else:
-            self.m6a_calls = np.fromstring(fiber_data["m6a"], sep=",", dtype=D_TYPE)
-            self.label = 1
 
-        if self.m6a_calls is None or self.m6a_calls.shape[0] < min_calls:
+        self.m6a_calls = fiber_data["calls"]
+        self.labels = fiber_data["labels"]
+
+        if force_negative:
+            self.labels = np.zeros(self.m6a_calls.shape[0], dtype=D_TYPE)
+
+        if (
+            self.m6a_calls is None
+            or isinstance(self.m6a_calls, float)
+            or self.m6a_calls.shape[0] < min_calls
+        ):
             self.m6a_calls = None
 
     def get_smrt_kinetics_window(
-        self, position, window_size=15, keep_all=False, keep_indels=False
+        self, position, window_size=15, keep_all=False, keep_indels=False, label=0
     ):
+        if position < 0 or position >= len(self.sequence):
+            logging.info(
+                f"Position {position}/{len(self.sequence)} is outside of the range of the subread sequence."
+            )
+            return None
         modded_base = self.sequence[position]
         extend = window_size // 2
 
@@ -168,16 +166,16 @@ class SMRTpileup:
             rtn["pw"],
             rtn["base"],
             rtn["offset"],
-            label=self.label,
+            label=label,
             ccs=self.ccs_name,
             m6a_call_base=modded_base,
             m6a_call_position=position,
         )
 
     def get_m6a_call_kinetics(self, window_size=15, keep_all=False):
-        for position in self.m6a_calls:
+        for label, position in zip(self.labels, self.m6a_calls):
             yield self.get_smrt_kinetics_window(
-                position, window_size=window_size, keep_all=keep_all
+                position, window_size=window_size, keep_all=keep_all, label=label
             )
 
 
@@ -245,6 +243,33 @@ class SMRTmatrix:
         return np.fliplr(mat)
 
 
+def extend_calls(row, buffer=5):
+    seq = np.frombuffer(bytes(row["fiber_sequence"], "utf-8"), dtype="S1")
+    assert seq.shape[0] == len(row["fiber_sequence"])
+    AT = (seq == b"A") | (seq == b"T")
+    where_AT = AT.nonzero()[0]
+    all_in_nuc = np.zeros(len(where_AT), dtype=bool)
+    for nuc_st, nun_ln in zip(row["nuc_starts"], row["nuc_lengths"]):
+        in_nuc_AT = (where_AT >= nuc_st + buffer) & (
+            where_AT < nuc_st + nun_ln - buffer
+        )
+        all_in_nuc[in_nuc_AT] = True
+    # print(all_in_nuc, all_in_nuc.sum(), all_in_nuc.shape)
+    negative_label_pos = where_AT[all_in_nuc]
+    # logging.info(
+    #    f"{negative_labels.shape[0]} / {row['m6a'].shape[0]} negative labels/positive labels"
+    # )
+    calls = np.concatenate((row["m6a"], negative_label_pos), axis=None)
+    labels = np.concatenate(
+        (np.ones(len(row["m6a"])), np.zeros(len(negative_label_pos))), axis=None
+    )
+    assert len(calls) == len(labels)
+    assert labels.max() < seq.shape[0]
+    # print(labels)
+    # print(calls)
+    return {"labels": labels, "calls": calls}
+
+
 def read_fiber_data(fiber_data_file):
     """Read in the fiber data file
 
@@ -254,7 +279,20 @@ def read_fiber_data(fiber_data_file):
     Returns:
         pandas.DataFrame: pandas dataframe with fiber data
     """
-    return pd.read_csv(fiber_data_file, sep="\t", na_values=[".", ""])
+    df = pd.read_csv(fiber_data_file, sep="\t", na_values=[".", ""])
+    logging.info(f"Read {len(df)} fibers from {fiber_data_file}")
+    for col in ["m6a", "nuc_starts", "nuc_lengths"]:
+        df[col].fillna("", inplace=True)
+        df[col] = df[col].apply(lambda x: np.fromstring(x, sep=",", dtype=D_TYPE))
+    df = df[(df.nuc_starts.apply(len) > 0) & (df.m6a.apply(len) > 0)]
+
+    calls = pd.DataFrame(list(df.apply(extend_calls, axis=1)))
+    assert len(calls) == len(df)
+    df["calls"] = calls["calls"]
+    df["labels"] = calls["labels"]
+    df = df[df.calls.apply(len) > 0]
+    logging.info(f"Filtered to {len(df)} fibers")
+    return df
 
 
 def read_bam(bam_file):
@@ -334,7 +372,6 @@ def main():
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
     fiber_data = read_fiber_data(args.all)
-    # bam = read_bam(args.bam)
     data = make_kinetic_data(args.bam, fiber_data, args)
     if args.out is not None:
         with open(args.out, "wb") as f:
