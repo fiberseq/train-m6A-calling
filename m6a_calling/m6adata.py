@@ -9,6 +9,9 @@ import logging
 import pandas as pd
 import os
 import pickle
+from multiprocessing import Pool
+from functools import partial
+
 
 D_TYPE = np.int64
 
@@ -269,17 +272,38 @@ def read_bam(bam_file):
     return pysam.AlignmentFile(bam_file, check_sq=False)
 
 
-def make_kinetic_data(bam, fiber_data, args):
+def mp_smrt_pile(
+    fiber_dict, bam_file=None, force_negative=False, window_size=15, keep_all=False
+):
+    bam = read_bam(bam_file)
+    kinetic_data = SMRTpileup(fiber_dict, bam, force_negative=force_negative)
+    if kinetic_data.m6a_calls is None:
+        return None
     data = []
-    for fiber_data in tqdm.tqdm(fiber_data.to_dict("records")):
-        kinetic_data = SMRTpileup(fiber_data, bam, force_negative=args.force_negative)
-        if kinetic_data.m6a_calls is None:
-            continue
-        for t in kinetic_data.get_m6a_call_kinetics(
-            keep_all=args.keep_all, window_size=args.window_size
-        ):
+    for t in kinetic_data.get_m6a_call_kinetics(
+        keep_all=keep_all, window_size=window_size
+    ):
+        if t is not None:
+            data.append(t)
+    return data
+
+
+def make_kinetic_data(bam_file, fiber_data, args):
+    data = []
+    mp_smrt_pile_helper = partial(
+        mp_smrt_pile,
+        bam_file=bam_file,
+        force_negative=args.force_negative,
+        window_size=args.window_size,
+        keep_all=args.keep_all,
+    )
+    fiber_records = fiber_data.to_dict("records")
+    logging.info("Processing {} fibers".format(len(fiber_records)))
+    data = []
+    with Pool(args.threads) as pool:
+        for t in tqdm.tqdm(pool.imap(mp_smrt_pile_helper, fiber_records)):
             if t is not None:
-                data.append(t)
+                data += t
 
     logging.info(f"Found {len(data)} kinetic data points.")
     out = {0: 0, 1: 0, "None": 0}
@@ -303,12 +327,13 @@ def main():
     parser.add_argument("-f", "--force-negative", action="store_true")
     parser.add_argument("-k", "--keep-all", action="store_true")
     parser.add_argument("-w", "--window-size", type=int, default=15)
+    parser.add_argument("-t", "--threads", type=int, default=8)
     args = parser.parse_args()
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
     fiber_data = read_fiber_data(args.all)
-    bam = read_bam(args.bam)
-    data = make_kinetic_data(bam, fiber_data, args)
+    # bam = read_bam(args.bam)
+    data = make_kinetic_data(args.bam, fiber_data, args)
     if args.out is not None:
         with open(args.out, "wb") as f:
             pickle.dump(data, f)
