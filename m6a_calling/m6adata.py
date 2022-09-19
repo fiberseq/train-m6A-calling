@@ -268,7 +268,7 @@ def extend_calls(row, buffer=5):
     assert len(calls) >= len(row["m6a"])
     # print(labels)
     # print(calls)
-    print(len(calls))
+    # print(len(calls))
     return {"labels": labels, "calls": calls}
 
 
@@ -295,7 +295,7 @@ def read_fiber_data(fiber_data_file):
     assert len(calls) == len(df)
     df["calls"] = calls["calls"]
     df["labels"] = calls["labels"]
-    df = df[df["calls"].apply(len) > 0]
+    df = df[df["calls"].apply(shape[0]) > 1]
     logging.info(f"Filtered to {len(df)} fibers")
     return df
 
