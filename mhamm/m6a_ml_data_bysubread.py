@@ -293,7 +293,106 @@ def get_feat_labels_matrix(smrt_obj, req_label=1):
     return total_feat_array, all_labels, others
 
 
-def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
+def get_feat_labels_matrix_per_subread(smrt_obj, req_label=1):
+    """
+    Get features and labels from the smrtmatrix object. We take
+    the read sequences, convert them into PWM, then we take the
+    pulse width (PW) and inter-pulse distance (IPD) data for each
+    read and average them over each sequence position. This results
+    in a feature matrix of shape (15, 6) for each example. 15 is the
+    sequence length and 4/6 are nucleotide frequency channels and
+    the remaining are the average PW and IPD channels.
+    :param smrt_obj: list, list of SMRTmatrix custom objects
+                            (see m6Adata.py for details).
+    :param req_label: int, required label, 1 for positive set,
+                            0 for the negative set.
+    :return: features and labels matrix
+    """
+    # Features list
+    total_feat_array = []
+    # Labels list
+    all_labels = []
+    subread_counts = []
+    ccss = []
+    m6a_call_positions = []
+    strands = []
+    # for every element in the list of
+    # smrt_obj
+    for i in range(len(smrt_obj)):
+        # print every 1000th iteration
+        if i % 1000 == 0:
+            print(i)
+        # If the object is not none
+        if smrt_obj[i] is not None:
+            # Get the list of sequence reads
+            base = smrt_obj[i].base
+            # and the labels
+            label = smrt_obj[i].label
+            # If the label is correct according to the class
+            # 1 for positive class and 0 for negative class
+            if label == req_label:
+                # Get the inter-pulse distance
+                ip = smrt_obj[i].ip
+                # and the pulse width
+                pw = smrt_obj[i].pw
+                # normalize the ip and pw arrays
+                ip = np.array(ip)
+                pw = np.array(pw)
+                ip = ip / 255
+                pw = pw / 255
+                #print(f"ip: {ip.shape}")
+                #print(f"pw: {pw.shape}")
+                for j in range(base.shape[0]):
+                    # get the pwm for all sequences
+                    base_ohe = get_pwm(base[j, ])                
+                    # take mean along genomic position axis
+                    # ip_avg = np.mean(ip, axis=0)
+                    # pw_avg = np.mean(pw, axis=0)
+                    ip_j = ip[j, ]
+                    pw_j = pw[j, ]
+                    #print(f"ip_avg: {ip_avg.shape}")
+                    #print(f"pw_avg: {pw_avg.shape}")
+                    offset = np.abs(smrt_obj[i].offset)
+                    #print(f"offset: {offset.shape}")
+                    # offset_mean = np.mean(offset, axis=0)
+                    offset_j = offset[j, ]
+                    #print(f"offset_mean: {offset_mean.shape}")
+                    # offset_mean = 1.0/(offset_mean + 1.0)
+                    offset_j = 1.0/(offset_j + 1.0)
+                    # concatenate the PWN, IPD and PW channels.
+                    feat_array = np.concatenate((base_ohe,
+                                                 ip_j[:, np.newaxis],
+                                                 pw_j[:, np.newaxis], 
+                                                 offset_j.T), axis=1)
+                    # append it to the total features array
+                    total_feat_array.append(feat_array)
+                    # and the labels array
+                    all_labels.append(int(label))
+                    subread_counts.append(smrt_obj[i].subread_count)
+                    ccss.append(smrt_obj[i].ccs)
+                    m6a_call_positions.append(smrt_obj[i].m6a_call_position)
+                    strands.append(smrt_obj[i].strand)
+    # convert the features and labels list to arrays
+    total_feat_array = np.array(total_feat_array)
+    all_labels = np.array(all_labels)
+    subread_counts = np.array(subread_counts)
+    ccss = np.array(ccss)
+    m6a_call_positions = np.array(m6a_call_positions)
+    strands = np.array(strands)   
+    others = [subread_counts, ccss, m6a_call_positions, strands]
+    print(f"total_feat_array shape: {total_feat_array.shape}")
+    print(f"all_labels shape: {all_labels.shape}")
+    return total_feat_array, all_labels, others
+
+
+
+
+
+
+
+
+
+def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix, aggregate=True):
     """
     main function to run everything. Takes in the positive and negative class
     file paths and gets the features and labels for both. Then divides the data
@@ -304,10 +403,17 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
     :param save_path_prefix: str, path to store train, validation and test data
     :return:
     """
-    # Get positive features and labels
-    pos_feats, pos_labels, pos_others = get_feat_labels_matrix(positive_pickle, req_label=1)
-    # Get negative features and labels
-    neg_feats, neg_labels, neg_others = get_feat_labels_matrix(negative_pickle, req_label=0)
+    
+    if aggregate:
+        # Get positive features and labels
+        pos_feats, pos_labels, pos_others = get_feat_labels_matrix(positive_pickle, req_label=1)
+        # Get negative features and labels
+        neg_feats, neg_labels, neg_others = get_feat_labels_matrix(negative_pickle, req_label=0)
+    else:
+        # Get positive features and labels
+        pos_feats, pos_labels, pos_others = get_feat_labels_matrix_per_subread(positive_pickle, req_label=1)
+        # Get negative features and labels
+        neg_feats, neg_labels, neg_others = get_feat_labels_matrix_per_subread(negative_pickle, req_label=0)
     
     pos_subread_counts, pos_ccss, pos_m6a_call_positions, pos_strands = pos_others
     
@@ -456,8 +562,18 @@ if __name__ == '__main__':
         choices=["both", "separate"],
         help="Which version to run, separate positive and negative or both together"
     )
+    
+    parser.add_argument(
+        '--aggregate_subreads',
+        type=str,
+        default="True",
+        choices=["True", "False"],
+        help="should IPD and PW values be averaged accross subreads? default is 'True'"
+    )
 
     args = parser.parse_args()
+    
+    aggregate = (args.aggregate_subreads == "True")
     
     if args.which_version == "separate":
         positive_pickle, negative_pickle = get_n_validate_smrtdata(args.positive_pickle, args.negative_pickle)
@@ -465,4 +581,4 @@ if __name__ == '__main__':
     elif args.which_version == "both":
         positive_pickle, negative_pickle = get_n_validate_smrtdata_both(args.both_pickle)
         
-    save_train_test_data(positive_pickle, negative_pickle, args.save_path_prefix)
+    save_train_test_data(positive_pickle, negative_pickle, args.save_path_prefix, aggregate=aggregate)
