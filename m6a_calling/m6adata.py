@@ -298,6 +298,7 @@ def read_fiber_data(fiber_data_file):
     df["labels"] = calls["labels"]
     df = df[df["calls"].apply(lambda x: x.shape[0]) > 1]
     logging.info(f"Filtered to {len(df)} fibers")
+    logging.info(f"{df}")
     return df
 
 
