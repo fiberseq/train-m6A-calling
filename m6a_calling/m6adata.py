@@ -280,11 +280,6 @@ def make_kinetic_data(bam, fiber_data, args):
         ):
             if t is not None:
                 data.append(t)
-        if len(data) > 5:
-            break
-
-    for d in data:
-        d.pprint()
 
     logging.info(f"Found {len(data)} kinetic data points.")
     out = {0: 0, 1: 0, "None": 0}
