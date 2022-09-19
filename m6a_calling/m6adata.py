@@ -293,7 +293,7 @@ def read_fiber_data(fiber_data_file):
     assert len(calls) == len(df)
     df["calls"] = calls["calls"]
     df["labels"] = calls["labels"]
-    df = df[df.calls.apply(len) > 0]
+    df = df[df["calls"].apply(len) > 0]
     logging.info(f"Filtered to {len(df)} fibers")
     return df
 
