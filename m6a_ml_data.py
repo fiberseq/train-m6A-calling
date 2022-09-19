@@ -182,7 +182,6 @@ def get_feat_labels_matrix(smrt_obj, req_label=1):
                             0 for the negative set.
     :return: features and labels matrix
     """
-
     # Features list
     total_feat_array = []
     # Labels list
@@ -210,7 +209,6 @@ def get_feat_labels_matrix(smrt_obj, req_label=1):
                 ip = smrt_obj[i].ip
                 # and the pulse width
                 pw = smrt_obj[i].pw
-
                 # normalize the ip and pw arrays
                 ip = np.array(ip)
                 pw = np.array(pw)
@@ -218,38 +216,28 @@ def get_feat_labels_matrix(smrt_obj, req_label=1):
                 pw = pw / 255
                 #print(f"ip: {ip.shape}")
                 #print(f"pw: {pw.shape}")
-                
                 for j in range(base.shape[0]):
                     # get the pwm for all sequences
                     base_ohe = get_pwm(base[j, ])                
-                    
                     # take mean along genomic position axis
                     # ip_avg = np.mean(ip, axis=0)
                     # pw_avg = np.mean(pw, axis=0)
                     ip_j = ip[j, ]
                     pw_j = pw[j, ]
-                    
                     #print(f"ip_avg: {ip_avg.shape}")
                     #print(f"pw_avg: {pw_avg.shape}")
-                    
                     offset = np.abs(smrt_obj[i].offset)
-                    
                     #print(f"offset: {offset.shape}")
-                    
                     # offset_mean = np.mean(offset, axis=0)
                     offset_j = offset[j, ]
-                    
                     #print(f"offset_mean: {offset_mean.shape}")
-                    
                     # offset_mean = 1.0/(offset_mean + 1.0)
                     offset_j = 1.0/(offset_j + 1.0)
-                    
                     # concatenate the PWN, IPD and PW channels.
                     feat_array = np.concatenate((base_ohe,
                                                  ip_j[:, np.newaxis],
                                                  pw_j[:, np.newaxis], 
                                                  offset_j.T), axis=1)
-    
                     # append it to the total features array
                     total_feat_array.append(feat_array)
                     # and the labels array
@@ -258,20 +246,16 @@ def get_feat_labels_matrix(smrt_obj, req_label=1):
                     ccss.append(smrt_obj[i].ccs)
                     m6a_call_positions.append(smrt_obj[i].m6a_call_position)
                     strands.append(smrt_obj[i].strand)
-
     # convert the features and labels list to arrays
     total_feat_array = np.array(total_feat_array)
     all_labels = np.array(all_labels)
     subread_counts = np.array(subread_counts)
     ccss = np.array(ccss)
     m6a_call_positions = np.array(m6a_call_positions)
-    strands = np.array(strands)
-    
+    strands = np.array(strands)   
     others = [subread_counts, ccss, m6a_call_positions, strands]
-    
     print(f"total_feat_array shape: {total_feat_array.shape}")
     print(f"all_labels shape: {all_labels.shape}")
-    
     return total_feat_array, all_labels, others
 
 
