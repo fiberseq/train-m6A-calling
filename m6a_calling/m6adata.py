@@ -301,7 +301,9 @@ def make_kinetic_data(bam_file, fiber_data, args):
     logging.info("Processing {} fibers".format(len(fiber_records)))
     data = []
     with Pool(args.threads) as pool:
-        for t in tqdm.tqdm(pool.imap(mp_smrt_pile_helper, fiber_records)):
+        for t in tqdm.tqdm(
+            pool.imap(mp_smrt_pile_helper, fiber_records), total=len(fiber_records)
+        ):
             if t is not None:
                 data += t
 
