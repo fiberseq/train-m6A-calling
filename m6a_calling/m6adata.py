@@ -293,8 +293,8 @@ def read_fiber_data(fiber_data_file):
     logging.info(f"{calls}")
     logging.info(f"Generated {calls.shape[0]} calls")
     assert len(calls) == len(df)
-    
-    df = pd.concat([df.reset_index(drop=True),calls.reset_index(drop=Tru‌​e)], axis=1)
+
+    df = pd.concat([df.reset_index(drop=True), calls.reset_index(drop=True)], axis=1)
 
     df = df[df["calls"].apply(lambda x: x.shape[0]) > 1]
     logging.info(f"Filtered to {len(df)} fibers")
