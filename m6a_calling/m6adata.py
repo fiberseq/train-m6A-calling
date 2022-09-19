@@ -23,6 +23,7 @@ class SMRTdata:
     liftable_positions = np.ndarray
     ip: np.ndarray
     pw: np.ndarray
+    # Conner add positions here
 
     def __init__(self, rec):
         self.rec = rec
@@ -43,6 +44,7 @@ class SMRTdata:
         assert self.ip.shape == self.pw.shape
 
     def get_smrt_kinetics(self):
+        # Conner assign new wual values here like you do for ip, pw
         ip = np.array(self.rec.get_tag("ip"), dtype=D_TYPE)
         pw = np.array(self.rec.get_tag("pw"), dtype=D_TYPE)
         if self.rec.is_reverse:
@@ -77,7 +79,13 @@ class SMRTpileup:
     m6a_calls: np.ndarray
     label: int
 
-    def __init__(self, fiber_data, bam, force_negative=False, min_calls=25):
+    def __init__(
+        self,
+        fiber_data,
+        bam,
+        force_negative=False,
+        min_calls=25,
+    ):
         self.subreads = []
         self.ccs_name = fiber_data["fiber"]
         for rec in bam.fetch(contig=self.ccs_name):
@@ -105,7 +113,9 @@ class SMRTpileup:
         if self.m6a_calls is None or self.m6a_calls.shape[0] < min_calls:
             self.m6a_calls = None
 
-    def get_smrt_kinetics_window(self, position, window_size=15, keep_all=False):
+    def get_smrt_kinetics_window(
+        self, position, window_size=15, keep_all=False, keep_indels=False
+    ):
         modded_base = self.sequence[position]
         extend = window_size // 2
 
@@ -140,7 +150,7 @@ class SMRTpileup:
             if modded_base == "T" and not smrt_data.rec.is_reverse:
                 continue
             kinetics = smrt_data.get_smrt_kinetics_from_positions(window)
-            if kinetics["ip"].shape[0] == len(window) or keep_all:
+            if kinetics["ip"].shape[0] == len(window) or keep_indels:
                 rtn.append(kinetics)
         if len(rtn) == 0:
             return None
@@ -265,9 +275,12 @@ def make_kinetic_data(bam, fiber_data, args):
         kinetic_data = SMRTpileup(fiber_data, bam, force_negative=args.force_negative)
         if kinetic_data.m6a_calls is None:
             continue
-        for t in kinetic_data.get_m6a_call_kinetics():
+        for t in kinetic_data.get_m6a_call_kinetics(
+            keep_all=args.keep_all, window_size=args.window_size
+        ):
             if t is not None:
                 data.append(t)
+
     logging.info(f"Found {len(data)} kinetic data points.")
     out = {0: 0, 1: 0, "None": 0}
     for d in data:
@@ -288,6 +301,8 @@ def main():
     parser.add_argument("all", help="Input fiberseq all table")
     parser.add_argument("-o", "--out", help="Output pickle file", default=None)
     parser.add_argument("-f", "--force-negative", action="store_true")
+    parser.add_argument("-k", "--keep-all", action="store_true")
+    parser.add_argument("-w", "--window-size", type=int, default=15)
     args = parser.parse_args()
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)

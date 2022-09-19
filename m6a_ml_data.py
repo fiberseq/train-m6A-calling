@@ -182,10 +182,15 @@ def get_feat_labels_matrix(smrt_obj, req_label=1):
                             0 for the negative set.
     :return: features and labels matrix
     """
+
     # Features list
     total_feat_array = []
     # Labels list
     all_labels = []
+    subread_counts = []
+    ccss = []
+    m6a_call_positions = []
+    strands = []
     # for every element in the list of
     # smrt_obj
     for i in range(len(smrt_obj)):
@@ -212,25 +217,54 @@ def get_feat_labels_matrix(smrt_obj, req_label=1):
                 pw = np.array(pw)
                 ip = ip / 255
                 pw = pw / 255
+                #print(f"ip: {ip.shape}")
+                #print(f"pw: {pw.shape}")
                 # take mean along genomic position axis
                 ip_avg = np.mean(ip, axis=0)
                 pw_avg = np.mean(pw, axis=0)
+                
+                #print(f"ip_avg: {ip_avg.shape}")
+                #print(f"pw_avg: {pw_avg.shape}")
+                
+                offset = np.abs(smrt_obj[i].offset)
+                
+                #print(f"offset: {offset.shape}")
+                
+                offset_mean = np.mean(offset, axis=0)
+                
+                #print(f"offset_mean: {offset_mean.shape}")
+                
+                offset_mean = 1.0/(offset_mean + 1.0)
+                
                 # concatenate the PWN, IPD and PW channels.
                 feat_array = np.concatenate((base_ohe,
                                              ip_avg[:, np.newaxis],
-                                             pw_avg[:, np.newaxis]), axis=1)
+                                             pw_avg[:, np.newaxis], 
+                                             offset_mean.T), axis=1)
 
                 # append it to the total features array
                 total_feat_array.append(feat_array)
                 # and the labels array
                 all_labels.append(int(label))
+                subread_counts.append(smrt_obj[i].subread_count)
+                ccss.append(smrt_obj[i].ccs)
+                m6a_call_positions.append(smrt_obj[i].m6a_call_position)
+                strands.append(smrt_obj[i].strand)
 
     # convert the features and labels list to arrays
     total_feat_array = np.array(total_feat_array)
     all_labels = np.array(all_labels)
+    subread_counts = np.array(subread_counts)
+    ccss = np.array(ccss)
+    m6a_call_positions = np.array(m6a_call_positions)
+    strands = np.array(strands)
+    
+    others = [subread_counts, ccss, m6a_call_positions, strands]
+    
     print(f"total_feat_array shape: {total_feat_array.shape}")
     print(f"all_labels shape: {all_labels.shape}")
-    return total_feat_array, all_labels
+    
+    return total_feat_array, all_labels, others
 
 
 def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
@@ -245,9 +279,13 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
     :return:
     """
     # Get positive features and labels
-    pos_feats, pos_labels = get_feat_labels_matrix(positive_pickle, req_label=1)
+    pos_feats, pos_labels, pos_others = get_feat_labels_matrix(positive_pickle, req_label=1)
     # Get negative features and labels
-    neg_feats, neg_labels = get_feat_labels_matrix(negative_pickle, req_label=0)
+    neg_feats, neg_labels, neg_others = get_feat_labels_matrix(negative_pickle, req_label=0)
+    
+    pos_subread_counts, pos_ccss, pos_m6a_call_positions, pos_strands = pos_others
+    
+    neg_subread_counts, neg_ccss, neg_m6a_call_positions, neg_strands = neg_others
 
     # Assert that all positive and negative sets have correct labels
     assert np.sum(pos_labels) == pos_labels.shape[0], "all positives should have a label 1"
@@ -257,15 +295,29 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
     final_feats = np.concatenate((pos_feats, neg_feats), axis=0)
     # and labels.
     final_labels = np.concatenate((pos_labels, neg_labels), axis=0)
+    
+    # Other stats
+    
+    final_subread_counts = np.concatenate((pos_subread_counts, neg_subread_counts), axis=0)
+    final_ccss = np.concatenate((pos_ccss, neg_ccss), axis=0)
+    final_m6a_call_pos = np.concatenate((pos_m6a_call_positions, neg_m6a_call_positions), axis=0)
+    final_strands = np.concatenate((pos_strands, neg_strands), axis=0)
+    
 
     # Shuffle to mix in the positives and negatives
     final_shuffle = np.arange(0, len(final_feats), 1, dtype=int)
     np.random.shuffle(final_shuffle)
     final_feats = final_feats[final_shuffle]
     final_labels = final_labels[final_shuffle]
-
+    
+    final_subread_counts = final_subread_counts[final_shuffle]
+    final_ccss = final_ccss[final_shuffle]
+    final_m6a_call_pos = final_m6a_call_pos[final_shuffle]
+    final_strands = final_strands[final_shuffle]
+    
     # reshape from (N, 15, 6) -> (N, 6, 15) to put channels first.
-    final_feats = final_feats.reshape((final_feats.shape[0], final_feats.shape[2], final_feats.shape[1]))
+    final_feats = np.moveaxis(final_feats, [1,2], [2,1])
+    #final_feats = final_feats.reshape((final_feats.shape[0], final_feats.shape[2], final_feats.shape[1]))
 
     # One-hot-encode labels
     labels_ohe = np.zeros((len(final_labels), 2))
@@ -280,10 +332,22 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
     for train_val_index, test_index in sss_test.split(final_feats, labels_ohe):
         X_train_val, X_test = final_feats[train_val_index], final_feats[test_index]
         y_train_val, y_test = labels_ohe[train_val_index], labels_ohe[test_index]
+        
+        train_val_subread_counts, test_subread_counts = final_subread_counts[train_val_index], final_subread_counts[test_index]
+        train_val_final_ccss, test_final_ccss = final_ccss[train_val_index], final_ccss[test_index]
+        train_val_final_strands, test_final_strands = final_strands[train_val_index], final_strands[test_index]
+        train_val_final_m6a_call_pos, test_final_m6a_call_pos = final_m6a_call_pos[train_val_index], final_m6a_call_pos[test_index]
         # get the validation set.
+        
         for train_index, val_index in sss_val.split(X_train_val, y_train_val):
             X_train, X_val = X_train_val[train_index], X_train_val[val_index]
             y_train, y_val = y_train_val[train_index], y_train_val[val_index]
+            
+            train_subread_counts, val_subread_counts = train_val_subread_counts[train_index], train_val_subread_counts[val_index]
+            train_final_ccss, val_final_ccss = train_val_final_ccss[train_index], train_val_final_ccss[val_index]
+            train_final_strands, val_final_strands = train_val_final_strands[train_index], train_val_final_strands[val_index]
+            train_final_m6a_call_positions, val_final_m6a_call_positions = train_val_final_m6a_call_pos[train_index], train_val_final_m6a_call_pos[val_index]
+            
             print(f"X_train: {X_train.shape}, X_val: {X_val.shape}, X_test: {X_test.shape}")
             print(f"y_train: {y_train.shape}, y_val: {y_val.shape}, y_test: {y_test.shape}")
 
@@ -293,8 +357,18 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
     save_data_dict['y_train'] = y_train
     save_data_dict['X_val'] = X_val
     save_data_dict['y_val'] = y_val
+    
+    save_data_dict['train_subread_counts'] = train_subread_counts
+    save_data_dict['val_subread_counts'] = val_subread_counts
+    save_data_dict['train_final_ccss'] = train_final_ccss
+    save_data_dict['val_final_ccss'] = val_final_ccss
+    
+    save_data_dict['train_final_strands'] = train_final_strands
+    save_data_dict['val_final_strands'] = val_final_strands
+    save_data_dict['train_final_m6a_call_positions'] = train_final_m6a_call_positions
+    save_data_dict['val_final_m6a_call_positions'] = val_final_m6a_call_positions
 
-    save_path = save_path_prefix + "m6A_train"
+    save_path = save_path_prefix + "m6A_train_large"
 
     np.savez(save_path, save_data_dict=save_data_dict)
 
@@ -302,7 +376,13 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
     save_data_dict = dict()
     save_data_dict['X_test'] = X_test
     save_data_dict['y_test'] = y_test
-    save_path = save_path_prefix + "m6A_test"
+    
+    save_data_dict['test_subread_counts'] = test_subread_counts
+    save_data_dict['test_final_ccss'] = test_final_ccss
+    save_data_dict['test_final_strands'] = test_final_strands
+    save_data_dict['test_final_m6a_call_pos'] = test_final_m6a_call_pos
+    
+    save_path = save_path_prefix + "m6A_test_large"
     np.savez(save_path, save_data_dict=save_data_dict)
 
     # Print the number of positive and negative examples
@@ -318,21 +398,21 @@ if __name__ == '__main__':
     parser.add_argument(
         '--positive_pickle',
         type=str,
-        default="../data/PositiveSMRTmatrix.pkl",
+        default="data/PositiveSMRTmatrix.pkl",
         help="path to the positive sample pickle file."
     )
 
     parser.add_argument(
         '--negative_pickle',
         type=str,
-        default='../data/LargeNegativeSMRTmatrix.pkl',
+        default='data/LargeNegativeSMRTmatrix.pkl',
         help="path to the negative sample pickle file."
     )
 
     parser.add_argument(
         '--save_path_prefix',
         type=str,
-        default="../data/",
+        default="data/",
         help="Where do you want to save the data. Default is current directory"
     )
 

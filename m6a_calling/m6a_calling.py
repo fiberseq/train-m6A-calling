@@ -115,7 +115,7 @@ def m6AGenerator(data_path, random_state=None, pin_memory=True,
 
 
 class M6ANet(torch.nn.Module):
-    def __init__(self, input_size=6, n_layers=3, sec_last_layer_size=25, last_layer_size=5,
+    def __init__(self, input_size=7, n_layers=3, sec_last_layer_size=25, last_layer_size=5,
                  output_shape=2):
         """
         Constructor for the M6ANet, a CNN model for m6A calling.
@@ -342,7 +342,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     
     # Print model architecture summary
-    summary_str = summary(model, input_size=(6, 15))
+    summary_str = summary(model, input_size=(7, 15))
     
     # Get training data generator and validation data. 
     X_train, (X_val, y_val) = m6AGenerator(args.train_data, random_state=None, pin_memory=True, num_workers=2,
@@ -353,5 +353,5 @@ if __name__ == "__main__":
                         optimizer,
                         X_valid=X_val, 
                         y_valid=y_val,
-                        max_epochs=2, 
+                        max_epochs=10, 
                         device=args.device)
