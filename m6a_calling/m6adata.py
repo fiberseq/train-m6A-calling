@@ -307,6 +307,7 @@ def main():
     parser.add_argument("-o", "--out", help="Output pickle file", default=None)
     parser.add_argument("-f", "--force-negative", action="store_true")
     parser.add_argument("-k", "--keep-all", action="store_true")
+    parser.add_argument("-w", "--window-size", type=int, default=15)
     args = parser.parse_args()
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
