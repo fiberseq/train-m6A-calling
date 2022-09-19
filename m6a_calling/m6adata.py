@@ -268,7 +268,7 @@ def extend_calls(row, buffer=15, subsample=1.0):
     assert len(calls) >= len(row["m6a"])
     if subsample < 1.0:
         idxs = np.random.choice(
-            np.arrange(len(calls), size=int(len(calls) * subsample), replace=False)
+            np.arange(len(calls)), size=int(len(calls) * subsample), replace=False
         )
         labels = labels[idxs]
         calls = calls[idxs]
