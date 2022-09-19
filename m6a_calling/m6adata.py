@@ -384,7 +384,7 @@ def main():
     parser.add_argument("-w", "--window-size", type=int, default=15)
     parser.add_argument("-b", "--buffer", type=int, default=15)
     parser.add_argument("-t", "--threads", type=int, default=8)
-    parser.add_argument("-f", "--sub-sample", type=float, default=1.0)
+    parser.add_argument("-s", "--sub-sample", type=float, default=1.0)
     args = parser.parse_args()
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
