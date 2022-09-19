@@ -254,7 +254,6 @@ def extend_calls(row, buffer=15, subsample=1.0):
             where_AT < nuc_st + nun_ln - buffer
         )
         all_in_nuc[in_nuc_AT] = True
-    # print(all_in_nuc, all_in_nuc.sum(), all_in_nuc.shape)
     negative_label_pos = where_AT[all_in_nuc]
     # logging.info(
     #    f"{negative_labels.shape[0]} / {row['m6a'].shape[0]} negative labels/positive labels"
@@ -272,9 +271,6 @@ def extend_calls(row, buffer=15, subsample=1.0):
         )
         labels = labels[idxs]
         calls = calls[idxs]
-    # print(labels)
-    # print(calls)
-    # print(len(calls))
     return {"labels": labels, "calls": calls}
 
 
