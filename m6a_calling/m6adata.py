@@ -243,7 +243,7 @@ class SMRTmatrix:
         return np.fliplr(mat)
 
 
-def extend_calls(row, buffer=5):
+def extend_calls(row, buffer=15, subsample=1.0):
     seq = np.frombuffer(bytes(row["fiber_sequence"], "utf-8"), dtype="S1")
     assert seq.shape[0] == len(row["fiber_sequence"])
     AT = (seq == b"A") | (seq == b"T")
@@ -266,13 +266,19 @@ def extend_calls(row, buffer=5):
     assert len(calls) == len(labels)
     assert labels.max() < seq.shape[0]
     assert len(calls) >= len(row["m6a"])
+    if subsample < 1.0:
+        idxs = np.random.choice(
+            np.arrange(len(calls), size=int(len(calls) * subsample), replace=False)
+        )
+        labels = labels[idxs]
+        calls = calls[idxs]
     # print(labels)
     # print(calls)
     # print(len(calls))
     return {"labels": labels, "calls": calls}
 
 
-def read_fiber_data(fiber_data_file):
+def read_fiber_data(fiber_data_file, buffer=15, subsample=1.0):
     """Read in the fiber data file
 
     Args:
@@ -289,7 +295,13 @@ def read_fiber_data(fiber_data_file):
     df = df.loc[(df.nuc_starts.apply(len) > 0) & (df.m6a.apply(len) > 0)]
     logging.info(f"Filtered to {len(df)} fibers")
 
-    calls = pd.DataFrame(list(df.apply(extend_calls, axis=1)))
+    calls = pd.DataFrame(
+        list(
+            df.apply(
+                lambda x: extend_calls(x, buffer=buffer, subsample=subsample), axis=1
+            )
+        )
+    )
     logging.info(f"Generated {calls.shape[0]} calls")
     assert len(calls) == len(df)
     df = pd.concat([df.reset_index(drop=True), calls.reset_index(drop=True)], axis=1)
@@ -370,11 +382,15 @@ def main():
     parser.add_argument("-f", "--force-negative", action="store_true")
     parser.add_argument("-k", "--keep-all", action="store_true")
     parser.add_argument("-w", "--window-size", type=int, default=15)
+    parser.add_argument("-b", "--buffer", type=int, default=15)
     parser.add_argument("-t", "--threads", type=int, default=8)
+    parser.add_argument("-f", "--sub-sample", type=float, default=1.0)
     args = parser.parse_args()
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
-    fiber_data = read_fiber_data(args.all)
+    fiber_data = read_fiber_data(
+        args.all, buffer=args.buffer, subsample=args.sub_sample
+    )
     data = make_kinetic_data(args.bam, fiber_data, args)
     if args.out is not None:
         with open(args.out, "wb") as f:
