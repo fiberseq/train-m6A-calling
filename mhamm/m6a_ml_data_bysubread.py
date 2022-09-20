@@ -500,9 +500,12 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix, agg
     save_data_dict['train_final_m6a_call_positions'] = train_final_m6a_call_positions
     save_data_dict['val_final_m6a_call_positions'] = val_final_m6a_call_positions
 
-    save_path = save_path_prefix + "m6A_train_large"
+    # save_path = save_path_prefix + "m6A_train_large"
+    # np.savez(save_path, save_data_dict=save_data_dict)
 
-    np.savez(save_path, save_data_dict=save_data_dict)
+    save_path = save_path_prefix + "m6A_train_large.pkl"
+    with open(save_path, "wb") as fp:
+        pickle.dump(save_data_dict, fp, protocol=4)
 
     # save test data
     save_data_dict = dict()
@@ -514,8 +517,13 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix, agg
     save_data_dict['test_final_strands'] = test_final_strands
     save_data_dict['test_final_m6a_call_pos'] = test_final_m6a_call_pos
     
-    save_path = save_path_prefix + "m6A_test_large"
-    np.savez(save_path, save_data_dict=save_data_dict)
+    # save_path = save_path_prefix + "m6A_test_large"
+    # np.savez(save_path, save_data_dict=save_data_dict)
+
+    save_path = save_path_prefix + "m6A_test_large.pkl"
+    with open(save_path, "wb") as fp:
+        pickle.dump(save_data_dict, fp, protocol=4)
+
 
     # Print the number of positive and negative examples
     # in each set.
