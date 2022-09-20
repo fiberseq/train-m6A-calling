@@ -274,7 +274,7 @@ def extend_calls(row, buffer=15, subsample=1.0):
     return {"labels": labels, "calls": calls}
 
 
-def read_fiber_data(fiber_data_file, buffer=15, subsample=1.0):
+def read_fiber_data(fiber_data_file, bam_file, buffer=15, subsample=1.0):
     """Read in the fiber data file
 
     Args:
@@ -283,6 +283,9 @@ def read_fiber_data(fiber_data_file, buffer=15, subsample=1.0):
     Returns:
         pandas.DataFrame: pandas dataframe with fiber data
     """
+    bam = read_bam(bam_file)
+    ccs_reads_to_keep = bam.references
+
     df = pd.read_csv(fiber_data_file, sep="\t", na_values=[".", ""])
     logging.info(f"Read {len(df)} fibers from {fiber_data_file}")
     for col in ["m6a", "nuc_starts", "nuc_lengths"]:
@@ -302,6 +305,7 @@ def read_fiber_data(fiber_data_file, buffer=15, subsample=1.0):
     assert len(calls) == len(df)
     df = pd.concat([df.reset_index(drop=True), calls.reset_index(drop=True)], axis=1)
     df = df[df["calls"].apply(lambda x: x.shape[0]) > 1]
+    df = df[df["fiber"].isin(ccs_reads_to_keep)]
     logging.info(f"Filtered to {len(df)} fibers")
     return df
 
@@ -385,7 +389,7 @@ def main():
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
     fiber_data = read_fiber_data(
-        args.all, buffer=args.buffer, subsample=args.sub_sample
+        args.all, args.bam, buffer=args.buffer, subsample=args.sub_sample
     )
     data = make_kinetic_data(args.bam, fiber_data, args)
     if args.out is not None:
