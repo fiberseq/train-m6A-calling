@@ -361,110 +361,120 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
     labels_ohe[np.where(final_labels == 1)[0], 0] = 1
     labels_ohe[np.where(final_labels == 0)[0], 1] = 1
 
-    # Get Stratified split with equal size of validation and test set (hence test set=0.2 and 0.25 because the
-    # train set becomes smaller after step 1).
-    sss_test = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=0)
-    sss_val = StratifiedShuffleSplit(n_splits=1, test_size=0.25, random_state=0)
-    # Get the test set
-    for train_val_index, test_index in sss_test.split(final_feats, labels_ohe):
-        X_train_val, X_test = final_feats[train_val_index], final_feats[test_index]
-        y_train_val, y_test = labels_ohe[train_val_index], labels_ohe[test_index]
+    # Stratify based on ccs read
+    unique_ccss = np.unique(final_ccss)
 
-        train_val_subread_counts, test_subread_counts = (
-            final_subread_counts[train_val_index],
-            final_subread_counts[test_index],
-        )
-        train_val_final_ccss, test_final_ccss = (
-            final_ccss[train_val_index],
-            final_ccss[test_index],
-        )
-        train_val_final_strands, test_final_strands = (
-            final_strands[train_val_index],
-            final_strands[test_index],
-        )
-        train_val_final_m6a_call_pos, test_final_m6a_call_pos = (
-            final_m6a_call_pos[train_val_index],
-            final_m6a_call_pos[test_index],
-        )
-        # get the validation set.
+    train_ccs = unique_ccss[0 : int(0.6 * (len(unique_ccss)))]
+    val_ccs = unique_ccss[int(0.6 * (len(unique_ccss))) : int(0.8 * (len(unique_ccss)))]
+    test_ccs = unique_ccss[int(0.8 * (len(unique_ccss))) :]
 
-        for train_index, val_index in sss_val.split(X_train_val, y_train_val):
-            X_train, X_val = X_train_val[train_index], X_train_val[val_index]
-            y_train, y_val = y_train_val[train_index], y_train_val[val_index]
+    X_train_ccs = []
+    y_train_ccs = []
+    train_subread_counts_ccs = []
+    train_final_ccss_ccs = []
+    train_final_strands_ccs = []
+    train_final_m6a_call_positions_ccs = []
 
-            train_subread_counts, val_subread_counts = (
-                train_val_subread_counts[train_index],
-                train_val_subread_counts[val_index],
-            )
-            train_final_ccss, val_final_ccss = (
-                train_val_final_ccss[train_index],
-                train_val_final_ccss[val_index],
-            )
-            train_final_strands, val_final_strands = (
-                train_val_final_strands[train_index],
-                train_val_final_strands[val_index],
-            )
-            train_final_m6a_call_positions, val_final_m6a_call_positions = (
-                train_val_final_m6a_call_pos[train_index],
-                train_val_final_m6a_call_pos[val_index],
-            )
+    X_val_ccs = []
+    y_val_ccs = []
+    val_subread_counts_ccs = []
+    val_final_ccss_ccs = []
+    val_final_strands_ccs = []
+    val_final_m6a_call_positions_ccs = []
 
-            print(
-                f"X_train: {X_train.shape}, X_val: {X_val.shape}, X_test: {X_test.shape}"
-            )
-            print(
-                f"y_train: {y_train.shape}, y_val: {y_val.shape}, y_test: {y_test.shape}"
-            )
+    X_test_ccs = []
+    y_test_ccs = []
+    test_subread_counts_ccs = []
+    test_final_ccss_ccs = []
+    test_final_strands_ccs = []
+    test_final_m6a_call_positions_ccs = []
+
+    for i in range(len(final_ccss)):
+        if final_ccss[i] in train_ccs:
+            X_train_ccs.append(final_feats[i])
+            y_train_ccs.append(labels_ohe[i])
+            train_subread_counts_ccs.append(final_subread_counts[i])
+            train_final_ccss_ccs.append(final_ccss[i])
+            train_final_strands_ccs.append(final_strands[i])
+            train_final_m6a_call_positions_ccs.append(final_m6a_call_pos[i])
+
+    for i in range(len(final_ccss)):
+        if final_ccss[i] in val_ccs:
+            X_val_ccs.append(final_feats[i])
+            y_val_ccs.append(labels_ohe[i])
+            val_subread_counts_ccs.append(final_subread_counts[i])
+            val_final_ccss_ccs.append(final_ccss[i])
+            val_final_strands_ccs.append(final_strands[i])
+            val_final_m6a_call_positions_ccs.append(final_m6a_call_pos[i])
+
+    for i in range(len(final_ccss)):
+        if final_ccss[i] in test_ccs:
+            X_test_ccs.append(final_feats[i])
+            y_test_ccs.append(labels_ohe[i])
+            test_subread_counts_ccs.append(final_subread_counts[i])
+            test_final_ccss_ccs.append(final_ccss[i])
+            test_final_strands_ccs.append(final_strands[i])
+            test_final_m6a_call_positions_ccs.append(final_m6a_call_pos[i])
+
+    print(f"X_train_ccs: {len(X_train_ccs)}")
+    print(f"X_val_ccs: {len(X_val_ccs)}")
+    print(f"X_test_ccs: {len(X_test_ccs)}")
 
     # Save train and validation data
     save_data_dict = dict()
-    save_data_dict["X_train"] = X_train
-    save_data_dict["y_train"] = y_train
-    save_data_dict["X_val"] = X_val
-    save_data_dict["y_val"] = y_val
+    save_data_dict["X_train"] = np.array(X_train_ccs)
+    save_data_dict["y_train"] = np.array(y_train_ccs)
+    save_data_dict["X_val"] = np.array(X_val_ccs)
+    save_data_dict["y_val"] = np.array(y_val_ccs)
 
-    save_data_dict["train_subread_counts"] = train_subread_counts
-    save_data_dict["val_subread_counts"] = val_subread_counts
-    save_data_dict["train_final_ccss"] = train_final_ccss
-    save_data_dict["val_final_ccss"] = val_final_ccss
+    save_data_dict["train_subread_counts"] = np.array(train_subread_counts_ccs)
+    save_data_dict["val_subread_counts"] = np.array(val_subread_counts_ccs)
+    save_data_dict["train_final_ccss"] = np.array(train_final_ccss_ccs)
+    save_data_dict["val_final_ccss"] = np.array(val_final_ccss_ccs)
 
-    save_data_dict["train_final_strands"] = train_final_strands
-    save_data_dict["val_final_strands"] = val_final_strands
-    save_data_dict["train_final_m6a_call_positions"] = train_final_m6a_call_positions
-    save_data_dict["val_final_m6a_call_positions"] = val_final_m6a_call_positions
+    save_data_dict["train_final_strands"] = np.array(train_final_strands_ccs)
+    save_data_dict["val_final_strands"] = np.array(val_final_strands_ccs)
+    save_data_dict["train_final_m6a_call_positions"] = np.array(
+        train_final_m6a_call_positions_ccs
+    )
+    save_data_dict["val_final_m6a_call_positions"] = np.array(
+        val_final_m6a_call_positions_ccs
+    )
 
-    save_path = save_path_prefix + "m6A_train_large"
+    save_path = save_path_prefix + "m6A_train_more_large"
 
     np.savez(save_path, save_data_dict=save_data_dict)
 
     # save test data
     save_data_dict = dict()
-    save_data_dict["X_test"] = X_test
-    save_data_dict["y_test"] = y_test
+    save_data_dict["X_test"] = X_test_ccs
+    save_data_dict["y_test"] = y_test_ccs
 
-    save_data_dict["test_subread_counts"] = test_subread_counts
-    save_data_dict["test_final_ccss"] = test_final_ccss
-    save_data_dict["test_final_strands"] = test_final_strands
-    save_data_dict["test_final_m6a_call_pos"] = test_final_m6a_call_pos
+    save_data_dict["test_subread_counts"] = test_subread_counts_ccs
+    save_data_dict["test_final_ccss"] = test_final_ccss_ccs
+    save_data_dict["test_final_strands"] = test_final_strands_ccs
+    save_data_dict["test_final_m6a_call_positions"] = test_final_m6a_call_positions_ccs
 
-    save_path = save_path_prefix + "m6A_test_large"
+    save_path = save_path_prefix + "m6A_test_more_large"
     np.savez(save_path, save_data_dict=save_data_dict)
 
     # Print the number of positive and negative examples
     # in each set.
-    count_pos_neg(y_train, set_name="Train")
-    count_pos_neg(y_val, set_name="Validation")
-    count_pos_neg(y_test, set_name="Test")
+    count_pos_neg(np.array(y_train_ccs), set_name="Train")
+    count_pos_neg(np.array(y_val_ccs), set_name="Validation")
+    count_pos_neg(np.array(y_test_ccs), set_name="Test")
 
 
 def main():
     parser = argparse.ArgumentParser()
+
     parser.add_argument(
         "--both_pickle",
         type=str,
-        default="data/BothSMRTmatrix.pkl",
+        default="data/MoreReadsLargeSMRTmatrix.pkl",
         help="path to the pickle file with both positive and negative samples.",
     )
+
     parser.add_argument(
         "--positive_pickle",
         type=str,
