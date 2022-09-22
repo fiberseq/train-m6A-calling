@@ -443,22 +443,30 @@ class SMRThifi:
             if start < 0 or end > len(self.seq):
                 continue
             seq = self.seq[start:end]
-            A = seq == b"A"
-            C = seq == b"C"
-            G = seq == b"G"
-            T = seq == b"T"
-            f_ip = self.f_ip[start:end]
-            r_ip = self.r_ip[start:end]
-            f_pw = self.f_pw[start:end]
-            r_pw = self.r_pw[start:end]
-            if (
-                f_ip.shape[0] != window_size
-                or r_ip.shape[0] != window_size
-                or f_pw.shape[0] != window_size
-                or r_pw.shape[0] != window_size
-            ):
+
+            At = seq == b"A"
+            Ct = seq == b"C"
+            Gt = seq == b"G"
+            Tt = seq == b"T"
+            # if the incorporated base is A then revcomp the sequence and values
+            if base == b"A":
+                ip = self.r_ip[start:end][::-1]
+                pw = self.r_pw[start:end][::-1]
+                T = At[::-1]
+                G = Ct[::-1]
+                C = Gt[::-1]
+                A = Tt[::-1]
+            elif base == b"T":
+                ip = self.f_ip[start:end]
+                pw = self.f_pw[start:end]
+                A = At
+                C = Ct
+                G = Gt
+                T = Tt
+
+            if ip.shape[0] != window_size or pw.shape[0] != window_size:
                 continue
-            rtn = np.vstack([A, C, G, T, f_ip, r_ip, f_pw, r_pw])
+            rtn = np.vstack([A, C, G, T, ip, pw])
             yield (labels[pos], rtn)
 
 
@@ -477,11 +485,21 @@ def make_hifi_kinetic_data(bam_file, args):
                 windows.append(w[1])
     labels = np.array(labels)
     windows = np.array(windows)
+    central_ip = windows[labels, 4, args.window_size // 2]
+    non_m6a = windows[~labels, 4, args.window_size // 2]
+    logging.info(
+        f"Mean IPD at m6A:\t{central_ip.mean():.4g} +/- {central_ip.std():.4g}"
+    )
+    logging.info(f"Mean IPD at non-m6A:\t{non_m6a.mean():.4g} +/- {non_m6a.std():.4g}")
+
     np.savez(args.out, features=windows, labels=labels)
     z = np.load(args.out)
     data = z["features"]
     labels = z["labels"]
     logging.info(f"Data shape: {data.shape}; Labels shape: {labels.shape}")
+    logging.info(
+        f"Positives: {labels.sum():,}\tNegatives: {len(labels) - labels.sum():,}"
+    )
 
 
 def main():
