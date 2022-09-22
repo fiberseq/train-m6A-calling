@@ -146,9 +146,9 @@ class SMRTpileup:
         rtn = []
         for smrt_data in self.subreads:
             # skip subreads from the other strand
-            if modded_base == "A" and smrt_data.rec.is_reverse:
+            if modded_base == "T" and smrt_data.rec.is_reverse:
                 continue
-            if modded_base == "T" and not smrt_data.rec.is_reverse:
+            if modded_base == "A" and not smrt_data.rec.is_reverse:
                 continue
             kinetics = smrt_data.get_smrt_kinetics_from_positions(window)
             if kinetics["ip"].shape[0] == len(window) or keep_indels:
