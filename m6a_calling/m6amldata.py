@@ -441,7 +441,7 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
         val_final_m6a_call_positions_ccs
     )
 
-    save_path = save_path_prefix + "m6A_train_more_large"
+    save_path = save_path_prefix + "m6A_train"
 
     np.savez(save_path, save_data_dict=save_data_dict)
 
@@ -455,7 +455,7 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
     save_data_dict["test_final_strands"] = test_final_strands_ccs
     save_data_dict["test_final_m6a_call_positions"] = test_final_m6a_call_positions_ccs
 
-    save_path = save_path_prefix + "m6A_test_more_large"
+    save_path = save_path_prefix + "m6A_test"
     np.savez(save_path, save_data_dict=save_data_dict)
 
     # Print the number of positive and negative examples
