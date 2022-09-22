@@ -1,0 +1,116 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r, echo=FALSE}
+library(tidyverse)
+library(data.table)
+library(scales)
+library(ggforce)
+library(cowplot)
+```
+
+```{r}
+df = fread("data/calls_and_data.csv.gz")
+dim(df)
+```
+
+```{r}
+labels = c()
+for(base in c("A", "C", "G", "T", "IP", "PW", "Offset")){
+    for( position in seq(1, 15)){
+        labels = c(labels, paste(base, position))
+    }
+}
+length(labels)
+colnames(df)[2:(length(labels) +1)] = labels
+
+n_true = sum(df$truth == 1)
+n_true
+```
+
+```{r}
+
+long = df %>%
+  group_by(truth) %>%
+  sample_n(n_true) %>%
+  ungroup %>%
+  #filter(truth==1) %>%
+  pivot_longer(col="A 1":"Offset 15", values_to = "val", names_to = "feat") %>%
+  separate(feat, sep=" ", into = c("feat_type", "feat_pos"), remove = FALSE) %>%
+  mutate(
+    result = case_when(
+      call == 1 & truth == 1 ~ "TP",
+      call == 1 & truth == 0 ~ "FP",
+      call == 0 & call == truth ~ "TN",
+      TRUE ~ "FN"
+      ),
+    result = factor(result, levels = c("TP", "FP", "TN", "FN")),
+    feat_pos = as.numeric(feat_pos)
+  )
+```
+
+```{r}
+my_colors = c(TN="darkred", FN="darkorange", FP="lightblue", TP="darkblue")
+grouped = long %>% 
+  group_by(feat, call, truth, feat_type, feat_pos, result) %>%
+  summarise(
+    mean=mean(val),
+    median = median(val),
+    min(val),
+    max(val)
+    ) 
+```
+
+```{r}
+grouped %>%
+  filter( feat_type=="IP") %>% # feat_type == "PW" |
+  ggplot(aes(x=feat_pos-8, y=mean, color=result)) +
+  geom_line()+
+  geom_point()+
+  facet_col(~feat_type)+
+  scale_x_continuous("Offset from m6A call") +
+  scale_y_continuous("Interpulse duration (IPD)") +
+  scale_color_manual(
+    values = my_colors
+  )+
+  theme_minimal_grid()
+  
+```
+
+```{r}
+long %>%
+  filter( feat_type=="IP") %>% # feat_type == "PW" |
+  ggplot(aes(x=feat_pos, y=val, color=result, group=paste(feat_pos, result))) +
+  geom_boxplot(coef = 0, outlier.shape = NA, position = "identity", alpha=0.1) +
+  facet_col(~feat_type)+
+  scale_color_manual(
+    values = my_colors
+  )+
+  coord_cartesian(ylim=c(0.03,0.20)) + 
+  theme_minimal_grid()
+```
+
+
+
+```{r}
+ip_df = fread("data/ip_df.csv.gz")
+```
+
+
+```{r}
+dim(ip_df)/1e6
+ip_df %>%
+  group_by(label, pos) %>%
+  summarise(ip = mean(ip)) %>%
+  mutate(
+    pos = pos - 7,
+    label = factor(label),
+  ) %>%
+  ggplot(aes(x=pos, y=ip, color=label, group=label)) +
+  geom_point() +
+  geom_line()
+```

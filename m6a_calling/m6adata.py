@@ -9,6 +9,9 @@ import logging
 import pandas as pd
 import os
 import pickle
+from multiprocessing import Pool
+from functools import partial
+
 
 D_TYPE = np.int64
 
@@ -77,7 +80,7 @@ class SMRTpileup:
     sequence: str
     ccs_name: str
     m6a_calls: np.ndarray
-    label: int
+    labels: int
 
     def __init__(
         self,
@@ -92,30 +95,28 @@ class SMRTpileup:
             self.subreads.append(SMRTdata(rec))
         self.sequence = fiber_data["fiber_sequence"]
         # check for empty case
-        if force_negative:
-            at_index = [
-                pos
-                for pos, char in enumerate(self.sequence)
-                if char == "A" or char == "T"
-            ]
-            self.m6a_calls = np.random.choice(
-                np.array(at_index, dtype=D_TYPE),
-                size=int(len(at_index) / 40),
-                replace=False,
-            )
-            self.label = 0
-        elif type(fiber_data["m6a"]) == float:
-            self.m6a_calls = None
-        else:
-            self.m6a_calls = np.fromstring(fiber_data["m6a"], sep=",", dtype=D_TYPE)
-            self.label = 1
 
-        if self.m6a_calls is None or self.m6a_calls.shape[0] < min_calls:
+        self.m6a_calls = fiber_data["calls"]
+        self.labels = fiber_data["labels"]
+
+        if force_negative:
+            self.labels = np.zeros(self.m6a_calls.shape[0], dtype=D_TYPE)
+
+        if (
+            self.m6a_calls is None
+            or isinstance(self.m6a_calls, float)
+            or self.m6a_calls.shape[0] < min_calls
+        ):
             self.m6a_calls = None
 
     def get_smrt_kinetics_window(
-        self, position, window_size=15, keep_all=False, keep_indels=False
+        self, position, window_size=15, keep_all=False, keep_indels=False, label=0
     ):
+        if position < 0 or position >= len(self.sequence):
+            logging.info(
+                f"Position {position}/{len(self.sequence)} is outside of the range of the subread sequence."
+            )
+            return None
         modded_base = self.sequence[position]
         extend = window_size // 2
 
@@ -145,9 +146,9 @@ class SMRTpileup:
         rtn = []
         for smrt_data in self.subreads:
             # skip subreads from the other strand
-            if modded_base == "A" and smrt_data.rec.is_reverse:
+            if modded_base == "T" and smrt_data.rec.is_reverse:
                 continue
-            if modded_base == "T" and not smrt_data.rec.is_reverse:
+            if modded_base == "A" and not smrt_data.rec.is_reverse:
                 continue
             kinetics = smrt_data.get_smrt_kinetics_from_positions(window)
             if kinetics["ip"].shape[0] == len(window) or keep_indels:
@@ -165,16 +166,16 @@ class SMRTpileup:
             rtn["pw"],
             rtn["base"],
             rtn["offset"],
-            label=self.label,
+            label=label,
             ccs=self.ccs_name,
             m6a_call_base=modded_base,
             m6a_call_position=position,
         )
 
     def get_m6a_call_kinetics(self, window_size=15, keep_all=False):
-        for position in self.m6a_calls:
+        for label, position in zip(self.labels, self.m6a_calls):
             yield self.get_smrt_kinetics_window(
-                position, window_size=window_size, keep_all=keep_all
+                position, window_size=window_size, keep_all=keep_all, label=label
             )
 
 
@@ -242,7 +243,38 @@ class SMRTmatrix:
         return np.fliplr(mat)
 
 
-def read_fiber_data(fiber_data_file):
+def extend_calls(row, buffer=15, subsample=1.0):
+    seq = np.frombuffer(bytes(row["fiber_sequence"], "utf-8"), dtype="S1")
+    assert seq.shape[0] == len(row["fiber_sequence"])
+    AT = (seq == b"A") | (seq == b"T")
+    where_AT = AT.nonzero()[0]
+    all_in_nuc = np.zeros(len(where_AT), dtype=bool)
+    for nuc_st, nun_ln in zip(row["nuc_starts"], row["nuc_lengths"]):
+        in_nuc_AT = (where_AT >= nuc_st + buffer) & (
+            where_AT < nuc_st + nun_ln - buffer
+        )
+        all_in_nuc[in_nuc_AT] = True
+    negative_label_pos = where_AT[all_in_nuc]
+    # logging.info(
+    #    f"{negative_labels.shape[0]} / {row['m6a'].shape[0]} negative labels/positive labels"
+    # )
+    calls = np.concatenate((row["m6a"], negative_label_pos), axis=None)
+    labels = np.concatenate(
+        (np.ones(len(row["m6a"])), np.zeros(len(negative_label_pos))), axis=None
+    )
+    assert len(calls) == len(labels)
+    assert labels.max() < seq.shape[0]
+    assert len(calls) >= len(row["m6a"])
+    if subsample < 1.0:
+        idxs = np.random.choice(
+            np.arange(len(calls)), size=int(len(calls) * subsample), replace=False
+        )
+        labels = labels[idxs]
+        calls = calls[idxs]
+    return {"labels": labels, "calls": calls}
+
+
+def read_fiber_data(fiber_data_file, bam_file, buffer=15, subsample=1.0):
     """Read in the fiber data file
 
     Args:
@@ -251,7 +283,31 @@ def read_fiber_data(fiber_data_file):
     Returns:
         pandas.DataFrame: pandas dataframe with fiber data
     """
-    return pd.read_csv(fiber_data_file, sep="\t", na_values=[".", ""])
+    bam = read_bam(bam_file)
+    ccs_reads_to_keep = bam.references
+
+    df = pd.read_csv(fiber_data_file, sep="\t", na_values=[".", ""])
+    logging.info(f"Read {len(df)} fibers from {fiber_data_file}")
+    for col in ["m6a", "nuc_starts", "nuc_lengths"]:
+        df[col].fillna("", inplace=True)
+        df[col] = df[col].apply(lambda x: np.fromstring(x, sep=",", dtype=D_TYPE))
+    df = df.loc[(df.nuc_starts.apply(len) > 0) & (df.m6a.apply(len) > 0)]
+    logging.info(f"Filtered to {len(df)} fibers")
+
+    calls = pd.DataFrame(
+        list(
+            df.apply(
+                lambda x: extend_calls(x, buffer=buffer, subsample=subsample), axis=1
+            )
+        )
+    )
+    logging.info(f"Generated {calls.shape[0]} calls")
+    assert len(calls) == len(df)
+    df = pd.concat([df.reset_index(drop=True), calls.reset_index(drop=True)], axis=1)
+    df = df[df["calls"].apply(lambda x: x.shape[0]) > 1]
+    df = df[df["fiber"].isin(ccs_reads_to_keep)]
+    logging.info(f"Filtered to {len(df)} fibers")
+    return df
 
 
 def read_bam(bam_file):
@@ -269,17 +325,40 @@ def read_bam(bam_file):
     return pysam.AlignmentFile(bam_file, check_sq=False)
 
 
-def make_kinetic_data(bam, fiber_data, args):
+def mp_smrt_pile(
+    fiber_dict, bam_file=None, force_negative=False, window_size=15, keep_all=False
+):
+    bam = read_bam(bam_file)
+    kinetic_data = SMRTpileup(fiber_dict, bam, force_negative=force_negative)
+    if kinetic_data.m6a_calls is None:
+        return None
     data = []
-    for fiber_data in tqdm.tqdm(fiber_data.to_dict("records")):
-        kinetic_data = SMRTpileup(fiber_data, bam, force_negative=args.force_negative)
-        if kinetic_data.m6a_calls is None:
-            continue
-        for t in kinetic_data.get_m6a_call_kinetics(
-            keep_all=args.keep_all, window_size=args.window_size
+    for t in kinetic_data.get_m6a_call_kinetics(
+        keep_all=keep_all, window_size=window_size
+    ):
+        if t is not None:
+            data.append(t)
+    return data
+
+
+def make_kinetic_data(bam_file, fiber_data, args):
+    data = []
+    mp_smrt_pile_helper = partial(
+        mp_smrt_pile,
+        bam_file=bam_file,
+        force_negative=args.force_negative,
+        window_size=args.window_size,
+        keep_all=args.keep_all,
+    )
+    fiber_records = fiber_data.to_dict("records")
+    logging.info("Processing {} fibers".format(len(fiber_records)))
+    data = []
+    with Pool(args.threads) as pool:
+        for t in tqdm.tqdm(
+            pool.imap(mp_smrt_pile_helper, fiber_records), total=len(fiber_records)
         ):
             if t is not None:
-                data.append(t)
+                data += t
 
     logging.info(f"Found {len(data)} kinetic data points.")
     out = {0: 0, 1: 0, "None": 0}
@@ -303,12 +382,16 @@ def main():
     parser.add_argument("-f", "--force-negative", action="store_true")
     parser.add_argument("-k", "--keep-all", action="store_true")
     parser.add_argument("-w", "--window-size", type=int, default=15)
+    parser.add_argument("-b", "--buffer", type=int, default=15)
+    parser.add_argument("-t", "--threads", type=int, default=8)
+    parser.add_argument("-s", "--sub-sample", type=float, default=1.0)
     args = parser.parse_args()
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
-    fiber_data = read_fiber_data(args.all)
-    bam = read_bam(args.bam)
-    data = make_kinetic_data(bam, fiber_data, args)
+    fiber_data = read_fiber_data(
+        args.all, args.bam, buffer=args.buffer, subsample=args.sub_sample
+    )
+    data = make_kinetic_data(args.bam, fiber_data, args)
     if args.out is not None:
         with open(args.out, "wb") as f:
             pickle.dump(data, f)

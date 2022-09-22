@@ -107,3 +107,12 @@ ENV/
 
 # MH local files
 local/*
+**/.ipynb_checkpoints/**
+**temp/**
+**tmp/**
+**.nb.**
+tests/**
+.vscode/**
+docs/_build/**
+docs/modules.rst
+docs/m6a_calling.rst
