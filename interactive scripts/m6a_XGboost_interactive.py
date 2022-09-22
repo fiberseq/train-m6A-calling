@@ -76,9 +76,11 @@ def run_XG(train_file,
            depth,
            pat):
 
-    #print(str(num_round) + " iterations to run")
+
+    # intitalize patience counter
     p = 0
     
+
     # read in data
     dtrain = xgb.DMatrix(train_file + '?format=csv&label_column=0')
     dtest = xgb.DMatrix(validation_file + '?format=csv&label_column=0')
@@ -109,7 +111,7 @@ def run_XG(train_file,
     # update the model
     for i in range(num_round):
         
-        # train
+        # train for 1 iteration starting with last model
         bst = xgb.train(param, dtrain, 1, evals=eval_s, xgb_model='xgboost.current.json')
         
         # update current model
@@ -121,6 +123,7 @@ def run_XG(train_file,
         fpr, tpr, thresh = metrics.roc_curve(dtest.get_label(), preds, pos_label=1)
         auc = metrics.auc(fpr, tpr)
 
+        # If AUC is still getting better we want to save the model as current best
         if auc > auc_best:
 
             # update auc_best
@@ -132,7 +135,7 @@ def run_XG(train_file,
             # reset patience
             p = 0
 
-
+        # AUC is getting worse so we need to update patience and stop if we are out of patience
         else:
             p += 1
 
@@ -145,14 +148,11 @@ def run_XG(train_file,
 
 
 def main():
-    ##########################################
-    ## Prepare arguments and create folders ##
-    ##########################################
 
     # Parse the arguments supplied
     args = parse_arguments()
 
-
+    # run the XG boost
     run_XG(train_file = args.train_file,
            validation_file = args.valid_file,
            num_round = int(args.n_rounds_total),

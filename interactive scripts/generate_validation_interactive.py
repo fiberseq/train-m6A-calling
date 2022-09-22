@@ -99,9 +99,6 @@ def flatten(data_path,
 
 
 def main():
-    ##########################################
-    ## Prepare arguments and create folders ##
-    ##########################################
 
     # Parse the arguments supplied
     args = parse_arguments()
