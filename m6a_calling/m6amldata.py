@@ -216,7 +216,7 @@ def get_feat_labels_matrix(smrt_obj, req_label=1):
     strands = []
     # for every element in the list of
     # smrt_obj
-    for i in tqdm.tqdm(range(len(smrt_obj)), total=len(smrt_obj)):
+    for i in tqdm(range(len(smrt_obj)), total=len(smrt_obj)):
         # If the object is not none
         if smrt_obj[i] is not None:
             # Get the list of sequence reads
