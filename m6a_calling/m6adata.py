@@ -3,7 +3,7 @@ import argparse
 import pysam
 import tqdm
 import numpy as np
-from numba import njit
+from numba import njit, jit
 from dataclasses import dataclass, fields
 import logging
 import pandas as pd
@@ -12,7 +12,9 @@ import pickle
 from multiprocessing import Pool
 from functools import partial
 
-
+# C+m
+CPG_MODS = [("C", 0, "m")]
+M6A_MODS = [("A", 0, "a"), ("T", 1, "a")]
 D_TYPE = np.int64
 
 
@@ -371,6 +373,117 @@ def make_kinetic_data(bam_file, fiber_data, args):
     return data
 
 
+@dataclass
+class SMRThifi:
+    """A class for storing all the kinetic data associated with a PacBio hifi."""
+
+    rec: pysam.AlignedSegment
+    f_ip: np.ndarray
+    f_pw: np.ndarray
+    r_ip: np.ndarray
+    r_pw: np.ndarray
+    f_m6a: np.ndarray
+    r_m6a: np.ndarray
+    m6a_calls: np.ndarray
+
+    def __init__(self, rec):
+        self.rec = rec
+        self.seq = np.frombuffer(bytes(self.rec.query_sequence, "utf-8"), dtype="S1")
+        self.f_ip = self.get_tag("fi")
+        self.f_pw = self.get_tag("fp")
+        self.r_ip = self.get_tag("ri")
+        self.r_pw = self.get_tag("rp")
+        self.get_mod_pos_from_rec()
+        # self.m6a_calls = self.get_mod_pos_from_rec()
+
+    def get_tag(self, tag):
+        return np.array(self.rec.get_tag(tag), dtype=np.int64)
+
+    def get_mod_pos_from_rec(self, mods=M6A_MODS):
+        self.f_m6a = np.array([])
+        self.r_m6a = np.array([])
+        positions = []
+        for mod in mods:
+            if mod in self.rec.modified_bases_forward:
+                pos = np.array(self.rec.modified_bases_forward[mod], dtype=D_TYPE)[:, 0]
+                if mod[1] == 0:
+                    self.f_m6a = pos
+                    # print(self.f_m6a)
+                elif mod[1] == 1:
+                    self.r_m6a = pos
+                    # print("here2")
+                positions.append(pos)
+        if len(positions) < 1:
+            return None
+        mod_positions = np.concatenate(positions, dtype=D_TYPE)
+        mod_positions.sort(kind="mergesort")
+        return mod_positions
+
+    def get_windows(self, window_size=15, subsample=1):
+        labels = np.zeros(len(self.seq), dtype=bool)
+        if len(self.f_m6a) > 0:
+            labels[self.f_m6a] = True
+        if len(self.r_m6a) > 0:
+            labels[self.r_m6a] = True
+        if labels.sum() == 0:
+            return None
+
+        positions = np.arange(len(self.seq))
+        if subsample < 1:
+            positions = np.random.choice(
+                positions, size=int(len(positions) * subsample), replace=False
+            )
+
+        for pos, base in zip(positions, self.seq[positions]):
+            if not (base == b"A" or base == b"T"):
+                continue
+            extend = window_size // 2
+            start = pos - extend
+            end = pos + extend + 1
+            if start < 0 or end > len(self.seq):
+                continue
+            seq = self.seq[start:end]
+            A = seq == b"A"
+            C = seq == b"C"
+            G = seq == b"G"
+            T = seq == b"T"
+            f_ip = self.f_ip[start:end]
+            r_ip = self.r_ip[start:end]
+            f_pw = self.f_pw[start:end]
+            r_pw = self.r_pw[start:end]
+            if (
+                f_ip.shape[0] != window_size
+                or r_ip.shape[0] != window_size
+                or f_pw.shape[0] != window_size
+                or r_pw.shape[0] != window_size
+            ):
+                continue
+            rtn = np.vstack([A, C, G, T, f_ip, r_ip, f_pw, r_pw])
+            yield (labels[pos], rtn)
+
+
+def make_hifi_kinetic_data(bam_file, args):
+    logging.info(f"Reading HiFi {bam_file}")
+    bam = pysam.AlignmentFile(bam_file, check_sq=False)
+    labels = []
+    windows = []
+    for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
+        z = SMRThifi(rec)
+        if z.f_ip.shape[0] == 0 or z.r_ip.shape[0] == 0:
+            continue
+        for w in z.get_windows(window_size=args.window_size, subsample=args.sub_sample):
+            if w is not None:
+                labels.append(w[0])
+                windows.append(w[1])
+    labels = np.array(labels)
+    windows = np.array(windows)
+    np.savez(args.out, features=windows, labels=labels)
+    z = np.load(args.out)
+    data = z["features"]
+    labels = z["labels"]
+    logging.info(f"Data shape: {data.shape}; Labels shape: {labels.shape}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Extracts the m6A data from a BAM file",
@@ -385,16 +498,20 @@ def main():
     parser.add_argument("-b", "--buffer", type=int, default=15)
     parser.add_argument("-t", "--threads", type=int, default=8)
     parser.add_argument("-s", "--sub-sample", type=float, default=1.0)
+    parser.add_argument("--hifi", action="store_true")
     args = parser.parse_args()
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
-    fiber_data = read_fiber_data(
-        args.all, args.bam, buffer=args.buffer, subsample=args.sub_sample
-    )
-    data = make_kinetic_data(args.bam, fiber_data, args)
-    if args.out is not None:
-        with open(args.out, "wb") as f:
-            pickle.dump(data, f)
+    if args.hifi:
+        data = make_hifi_kinetic_data(args.bam, args)
+    else:
+        fiber_data = read_fiber_data(
+            args.all, args.bam, buffer=args.buffer, subsample=args.sub_sample
+        )
+        data = make_kinetic_data(args.bam, fiber_data, args)
+        if args.out is not None:
+            with open(args.out, "wb") as f:
+                pickle.dump(data, f)
 
 
 if __name__ == "__main__":
