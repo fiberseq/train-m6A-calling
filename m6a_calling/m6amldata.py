@@ -466,56 +466,22 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument(
-        "--both_pickle",
+        "both_pickle",
         type=str,
-        default="data/MoreReadsLargeSMRTmatrix.pkl",
         help="path to the pickle file with both positive and negative samples.",
     )
-
-    parser.add_argument(
-        "--positive_pickle",
-        type=str,
-        default="data/PositiveSMRTmatrix.pkl",
-        help="path to the positive sample pickle file.",
-    )
-
-    parser.add_argument(
-        "--negative_pickle",
-        type=str,
-        default="data/LargeNegativeSMRTmatrix.pkl",
-        help="path to the negative sample pickle file.",
-    )
-
     parser.add_argument(
         "--save_path_prefix",
         type=str,
         default="data/",
-        help="Where do you want to save the data. Default is current directory",
+        help="Where do you want to save the data.",
     )
-
-    parser.add_argument(
-        "--which_version",
-        type=str,
-        default="both",
-        choices=["both", "separate"],
-        help="Which version to run, separate positive and negative or both together",
-    )
-
     args = parser.parse_args()
-
-    if args.which_version == "separate":
-        positive_pickle, negative_pickle = get_n_validate_smrtdata(
-            args.positive_pickle, args.negative_pickle
-        )
-
-    elif args.which_version == "both":
-        positive_pickle, negative_pickle = get_n_validate_smrtdata_both(
-            args.both_pickle
-        )
-
+    positive_pickle, negative_pickle = get_n_validate_smrtdata_both(args.both_pickle)
     save_train_test_data(positive_pickle, negative_pickle, args.save_path_prefix)
 
 
