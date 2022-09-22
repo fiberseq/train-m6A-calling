@@ -10,6 +10,7 @@ import argparse
 from tqdm import tqdm
 import numpy as np
 from sklearn.model_selection import StratifiedShuffleSplit
+from numba import njit
 
 
 def count_pos_neg(labels, set_name=""):
@@ -26,6 +27,7 @@ def count_pos_neg(labels, set_name=""):
     print(f"{set_name} has {len(m6as)} positives and {len(nulls)} negatives")
 
 
+@njit
 def one_hot_encode(
     sequence,
     ignore="N",
