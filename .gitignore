@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 9b112b1 (git ignore)
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -111,11 +107,6 @@ ENV/
 
 # MH local files
 local/*
-<<<<<<< HEAD
-=======
-=======
-
->>>>>>> 9b112b1 (git ignore)
 **/.ipynb_checkpoints/**
 **temp/**
 **tmp/**
@@ -125,4 +116,3 @@ tests/**
 docs/_build/**
 docs/modules.rst
 docs/m6a_calling.rst
->>>>>>> 5d74c94 (git ignore)
