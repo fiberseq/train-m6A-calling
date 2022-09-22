@@ -10,6 +10,7 @@ import argparse
 from tqdm import tqdm
 import numpy as np
 from sklearn.model_selection import StratifiedShuffleSplit
+from numba import jit
 
 
 def count_pos_neg(labels, set_name=""):
@@ -190,6 +191,7 @@ def get_n_validate_smrtdata(positive_pickle, negative_pickle):
     return positive, negative
 
 
+@jit
 def get_feat_labels_matrix(smrt_obj, req_label=1):
     """
     Get features and labels from the smrtmatrix object. We take
