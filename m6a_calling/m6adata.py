@@ -385,15 +385,23 @@ class SMRThifi:
     f_m6a: np.ndarray
     r_m6a: np.ndarray
     m6a_calls: np.ndarray
+    labels: np.ndarray
 
     def __init__(self, rec):
         self.rec = rec
         self.seq = np.frombuffer(bytes(self.rec.query_sequence, "utf-8"), dtype="S1")
         self.f_ip = self.get_tag("fi")
         self.f_pw = self.get_tag("fp")
-        self.r_ip = self.get_tag("ri")
-        self.r_pw = self.get_tag("rp")
+        self.r_ip = self.get_tag("ri")[::-1]
+        self.r_pw = self.get_tag("rp")[::-1]
         self.get_mod_pos_from_rec()
+
+        labels = np.zeros(len(self.seq), dtype=bool)
+        if len(self.f_m6a) > 0:
+            labels[self.f_m6a] = True
+        if len(self.r_m6a) > 0:
+            labels[self.r_m6a] = True
+        self.labels = labels
         # self.m6a_calls = self.get_mod_pos_from_rec()
 
     def get_tag(self, tag):
@@ -420,45 +428,78 @@ class SMRThifi:
         return mod_positions
 
     def get_windows(self, window_size=15, subsample=1):
-        labels = np.zeros(len(self.seq), dtype=bool)
-        if len(self.f_m6a) > 0:
-            labels[self.f_m6a] = True
-        if len(self.r_m6a) > 0:
-            labels[self.r_m6a] = True
+        rtn = SMRThifi.get_windows_helper(
+            self.seq,
+            self.labels,
+            self.f_m6a,
+            self.r_m6a,
+            self.f_ip,
+            self.f_pw,
+            self.r_ip,
+            self.r_pw,
+            window_size,
+            subsample,
+        )
+        if rtn is not None:
+            for t in rtn:
+                yield t[0], t[1], np.vstack(t[2])
+
+    @njit
+    def get_windows_helper(
+        self_seq,
+        labels,
+        self_f_m6a,
+        self_r_m6a,
+        self_f_ip,
+        self_f_pw,
+        self_r_ip,
+        self_r_pw,
+        window_size,
+        subsample,
+    ):
         if labels.sum() == 0:
             return None
 
-        positions = np.arange(len(self.seq))
+        extend = window_size // 2
+        Ab = np.frombuffer(b"A", dtype="S1")
+        Cb = np.frombuffer(b"C", dtype="S1")
+        Gb = np.frombuffer(b"G", dtype="S1")
+        Tb = np.frombuffer(b"T", dtype="S1")
+
+        positions = np.arange(len(self_seq))
+        # positions = positions[(self_seq == Ab) | (self_seq == Tb)]
+
         if subsample < 1:
             positions = np.random.choice(
                 positions, size=int(len(positions) * subsample), replace=False
             )
-
-        for pos, base in zip(positions, self.seq[positions]):
+        windows = []
+        for pos, base in zip(positions, self_seq[positions]):
             if not (base == b"A" or base == b"T"):
                 continue
-            extend = window_size // 2
             start = pos - extend
             end = pos + extend + 1
-            if start < 0 or end > len(self.seq):
+            if start < 0 or end > len(self_seq):
                 continue
-            seq = self.seq[start:end]
+            seq = self_seq[start:end]
 
-            At = seq == b"A"
-            Ct = seq == b"C"
-            Gt = seq == b"G"
-            Tt = seq == b"T"
+            At = seq == Ab
+            Ct = seq == Cb
+            Gt = seq == Gb
+            Tt = seq == Tb
             # if the incorporated base is A then revcomp the sequence and values
             if base == b"A":
-                ip = self.r_ip[start:end][::-1]
-                pw = self.r_pw[start:end][::-1]
+                strand = 1
+                ip = self_r_ip[start:end]
+                pw = self_r_pw[start:end]
                 T = At[::-1]
                 G = Ct[::-1]
                 C = Gt[::-1]
                 A = Tt[::-1]
             elif base == b"T":
-                ip = self.f_ip[start:end]
-                pw = self.f_pw[start:end]
+                strand = 0
+                ip = self_f_ip[start:end]
+                pw = self_f_pw[start:end]
                 A = At
                 C = Ct
                 G = Gt
@@ -466,14 +507,16 @@ class SMRThifi:
 
             if ip.shape[0] != window_size or pw.shape[0] != window_size:
                 continue
-            rtn = np.vstack([A, C, G, T, ip, pw])
-            yield (labels[pos], rtn)
+            rtn = (A, C, G, T, ip, pw)
+            windows.append((labels[pos], strand, rtn))
+        return windows
 
 
 def make_hifi_kinetic_data(bam_file, args):
     logging.info(f"Reading HiFi {bam_file}")
     bam = pysam.AlignmentFile(bam_file, check_sq=False)
     labels = []
+    strands = []
     windows = []
     for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
         z = SMRThifi(rec)
@@ -482,15 +525,23 @@ def make_hifi_kinetic_data(bam_file, args):
         for w in z.get_windows(window_size=args.window_size, subsample=args.sub_sample):
             if w is not None:
                 labels.append(w[0])
-                windows.append(w[1])
+                strands.append(w[1])
+                windows.append(w[2])
+
     labels = np.array(labels)
+    strands = np.array(strands)
     windows = np.array(windows)
-    central_ip = windows[labels, 4, args.window_size // 2]
-    non_m6a = windows[~labels, 4, args.window_size // 2]
-    logging.info(
-        f"Mean IPD at m6A:\t{central_ip.mean():.4g} +/- {central_ip.std():.4g}"
-    )
-    logging.info(f"Mean IPD at non-m6A:\t{non_m6a.mean():.4g} +/- {non_m6a.std():.4g}")
+    for strand in [0, 1]:
+        central_ip = windows[labels & (strand == strands), 4, args.window_size // 2]
+        non_m6a = windows[~labels & (strand == strands), 4, args.window_size // 2]
+        logging.info(f"Strand: {strand}")
+        logging.info(
+            f"Mean IPD at m6A:\t{central_ip.mean():.4g} +/- {central_ip.std():.4g}"
+        )
+        logging.info(
+            f"Mean IPD at non-m6A:\t{non_m6a.mean():.4g} +/- {non_m6a.std():.4g}"
+        )
+        logging.info("")
 
     np.savez(args.out, features=windows, labels=labels)
     z = np.load(args.out)
