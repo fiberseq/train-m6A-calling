@@ -468,7 +468,7 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "both_pickle",
+        "both-pickle",
         type=str,
         help="path to the pickle file with both positive and negative samples.",
     )
