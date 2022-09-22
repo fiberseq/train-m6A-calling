@@ -33,6 +33,7 @@ setup(
         "console_scripts": [
             "m6Acalling=m6a_calling.cli:main",
             "m6adata=m6a_calling.m6adata:main",
+            "m6aMLdata=m6a_calling.m6aMLdata:main",
         ],
     },
     install_requires=requirements,
