@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 9b112b1 (git ignore)
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -108,7 +111,11 @@ ENV/
 
 # MH local files
 local/*
+<<<<<<< HEAD
 =======
+=======
+
+>>>>>>> 9b112b1 (git ignore)
 **/.ipynb_checkpoints/**
 **temp/**
 **tmp/**
