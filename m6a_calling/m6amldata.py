@@ -36,44 +36,34 @@ def one_hot_encode(
     **kwargs,
 ):
     """Converts a string or list of characters into a one-hot encoding.
-
     This function will take in either a string or a list and convert it into a
     one-hot encoding. If the input is a string, each character is assumed to be
     a different symbol, e.g. 'ACGT' is assumed to be a sequence of four
     characters. If the input is a list, the elements can be any size.
-
     Although this function will be used here primarily to convert nucleotide
     sequences into one-hot encoding with an alphabet of size 4, in principle
     this function can be used for any types of sequences.
-
     Parameters
     ----------
     sequence : str or list
         The sequence to convert to a one-hot encoding.
-
     ignore : str, optional
         A character to indicate setting nothing to 1 for that row, keeping the
         encoding entirely 0's for that row. In the context of genomics, this is
         the N character. Default is 'N'.
-
     alphabet : set or tuple or list, optional
         A pre-defined alphabet. If None is passed in, the alphabet will be
         determined from the sequence, but this may be time consuming for
         large sequences. Default is None.
-
     dtype : str or np.dtype, optional
         The data type of the returned encoding. Default is int8.
-
     desc : str or None, optional
         The title to display in the progress bar.
-
     verbose : bool or str, optional
         Whether to display a progress bar. If a string is passed in, use as the
         name of the progressbar. Default is False.
-
     kwargs : arguments
         Arguments to be passed into tqdm. Default is None.
-
     Returns
     -------
     ohe : np.ndarray
@@ -128,6 +118,32 @@ def get_pwm(seq_array, alphabet=["A", "C", "G", "T"]):
     total_ohe = total_ohe / (np.sum(total_ohe, axis=1)[:, np.newaxis])
 
     return total_ohe
+
+
+def get_n_validate_smrtdata_both(both_pickle):
+    # Load pickle file
+    all_samples = pickle.load(open(both_pickle, "rb"))
+    print(f"The {both_pickle} dataset has {len(all_samples)} samples.")
+    cnt_zero = 0
+    cnt_one = 0
+    cnt_none = 0
+    positive = []
+    negative = []
+    for i in range(len(all_samples)):
+        if all_samples[i] is not None:
+            if all_samples[i].label == 0:
+                cnt_zero += 1
+                negative.append(all_samples[i])
+            elif all_samples[i].label == 1:
+                cnt_one += 1
+                positive.append(all_samples[i])
+        else:
+            cnt_none += 1
+
+    assert cnt_none == 0, f"{cnt_none} None types found in {both_pickle}"
+    print(f"{both_pickle} has {cnt_zero} negatives and {cnt_one} positives")
+
+    return positive, negative
 
 
 def get_n_validate_smrtdata(positive_pickle, negative_pickle):
@@ -443,7 +459,12 @@ def save_train_test_data(positive_pickle, negative_pickle, save_path_prefix):
 
 def main():
     parser = argparse.ArgumentParser()
-
+    parser.add_argument(
+        "--both_pickle",
+        type=str,
+        default="data/BothSMRTmatrix.pkl",
+        help="path to the pickle file with both positive and negative samples.",
+    )
     parser.add_argument(
         "--positive_pickle",
         type=str,
@@ -465,11 +486,25 @@ def main():
         help="Where do you want to save the data. Default is current directory",
     )
 
+    parser.add_argument(
+        "--which_version",
+        type=str,
+        default="both",
+        choices=["both", "separate"],
+        help="Which version to run, separate positive and negative or both together",
+    )
+
     args = parser.parse_args()
 
-    positive_pickle, negative_pickle = get_n_validate_smrtdata(
-        args.positive_pickle, args.negative_pickle
-    )
+    if args.which_version == "separate":
+        positive_pickle, negative_pickle = get_n_validate_smrtdata(
+            args.positive_pickle, args.negative_pickle
+        )
+
+    elif args.which_version == "both":
+        positive_pickle, negative_pickle = get_n_validate_smrtdata_both(
+            args.both_pickle
+        )
 
     save_train_test_data(positive_pickle, negative_pickle, args.save_path_prefix)
 
