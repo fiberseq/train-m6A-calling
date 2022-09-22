@@ -475,7 +475,7 @@ def main():
         help="path to the pickle file with both positive and negative samples.",
     )
     parser.add_argument(
-        "--save_path_prefix",
+        "--save-path-prefix",
         type=str,
         default="data/",
         help="Where do you want to save the data.",
