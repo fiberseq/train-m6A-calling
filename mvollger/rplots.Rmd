@@ -93,3 +93,24 @@ long %>%
   coord_cartesian(ylim=c(0.03,0.20)) + 
   theme_minimal_grid()
 ```
+
+
+
+```{r}
+ip_df = fread("data/ip_df.csv.gz")
+```
+
+
+```{r}
+dim(ip_df)/1e6
+ip_df %>%
+  group_by(label, pos) %>%
+  summarise(ip = mean(ip)) %>%
+  mutate(
+    pos = pos - 7,
+    label = factor(label),
+  ) %>%
+  ggplot(aes(x=pos, y=ip, color=label, group=label)) +
+  geom_point() +
+  geom_line()
+```
