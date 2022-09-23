@@ -3,7 +3,7 @@ import argparse
 import pysam
 import tqdm
 import numpy as np
-from numba import njit, jit
+from numba import njit, jit, prange
 from dataclasses import dataclass, fields
 import logging
 import pandas as pd
@@ -11,8 +11,10 @@ import os
 import pickle
 from multiprocessing import Pool
 from functools import partial
+import gnuplotlib as gp
 
-# C+m
+
+# Global statics
 CPG_MODS = [("C", 0, "m")]
 M6A_MODS = [("A", 0, "a"), ("T", 1, "a")]
 D_TYPE = np.int64
@@ -385,9 +387,12 @@ class SMRThifi:
     f_m6a: np.ndarray
     r_m6a: np.ndarray
     m6a_calls: np.ndarray
+    nuc_starts: np.ndarray
+    nuc_lengths: np.ndarray
     labels: np.ndarray
+    positions: np.ndarray
 
-    def __init__(self, rec):
+    def __init__(self, rec, train=False, buffer=15):
         self.rec = rec
         self.seq = np.frombuffer(bytes(self.rec.query_sequence, "utf-8"), dtype="S1")
         self.f_ip = self.get_tag("fi")
@@ -395,6 +400,7 @@ class SMRThifi:
         self.r_ip = self.get_tag("ri")[::-1]
         self.r_pw = self.get_tag("rp")[::-1]
         self.get_mod_pos_from_rec()
+        # logging.info(f"{self.nuc_starts.shape}")
 
         labels = np.zeros(len(self.seq), dtype=bool)
         if len(self.f_m6a) > 0:
@@ -402,10 +408,41 @@ class SMRThifi:
         if len(self.r_m6a) > 0:
             labels[self.r_m6a] = True
         self.labels = labels
+
+        # set up positions we will call
+        positions = np.arange(len(self.seq))
+        if train:
+            self.nuc_starts = self.get_tag("ns")
+            self.nuc_lengths = self.get_tag("nl")
+            logging.debug(f"{self.nuc_starts.shape}")
+            keep = SMRThifi.filter_negatives_by_nucleosomes(
+                positions, self.nuc_starts, self.nuc_lengths, self.labels, buffer
+            )
+            logging.debug(
+                f"{keep.sum()} positions kept, {len(keep) - keep.sum()} positions removed"
+            )
+        else:
+            keep = 1
+        is_AT = (self.seq == b"A") | (self.seq == b"T")
+        self.positions = positions[keep & is_AT]
+
         # self.m6a_calls = self.get_mod_pos_from_rec()
 
+    @njit
+    def filter_negatives_by_nucleosomes(
+        positions, nuc_start, nuc_lengths, labels, buffer
+    ):
+        # keep positives
+        keep = labels.copy()
+        # add negatives in nucleosome regions
+        for st, ln in zip(nuc_start, nuc_lengths):
+            keep[(positions >= st + buffer) & (positions < st + ln - buffer)] = True
+        return keep
+
     def get_tag(self, tag):
-        return np.array(self.rec.get_tag(tag), dtype=np.int64)
+        if self.rec.has_tag(tag):
+            return np.array(self.rec.get_tag(tag), dtype=np.int64)
+        return np.array([], dtype=np.int64)
 
     def get_mod_pos_from_rec(self, mods=M6A_MODS):
         self.f_m6a = np.array([])
@@ -427,10 +464,11 @@ class SMRThifi:
         mod_positions.sort(kind="mergesort")
         return mod_positions
 
-    def get_windows(self, window_size=15, subsample=1):
-        rtn = SMRThifi.get_windows_helper(
+    def get_windows(self, window_size=15, subsample=1, buffer=30):
+        return SMRThifi.get_windows_helper(
             self.seq,
             self.labels,
+            self.positions,
             self.f_m6a,
             self.r_m6a,
             self.f_ip,
@@ -439,15 +477,14 @@ class SMRThifi:
             self.r_pw,
             window_size,
             subsample,
+            buffer,
         )
-        if rtn is not None:
-            for t in rtn:
-                yield t[0], t[1], np.vstack(t[2])
 
-    @njit
+    @njit()
     def get_windows_helper(
         self_seq,
         labels,
+        positions,
         self_f_m6a,
         self_r_m6a,
         self_f_ip,
@@ -456,6 +493,7 @@ class SMRThifi:
         self_r_pw,
         window_size,
         subsample,
+        buffer,
     ):
         if labels.sum() == 0:
             return None
@@ -466,15 +504,22 @@ class SMRThifi:
         Gb = np.frombuffer(b"G", dtype="S1")
         Tb = np.frombuffer(b"T", dtype="S1")
 
-        positions = np.arange(len(self_seq))
-        # positions = positions[(self_seq == Ab) | (self_seq == Tb)]
-
         if subsample < 1:
             positions = np.random.choice(
                 positions, size=int(len(positions) * subsample), replace=False
             )
+
+        out_labels = []
+        strands = []
         windows = []
+        pre_label = -1
+        pre_pos = -1
         for pos, base in zip(positions, self_seq[positions]):
+            base = self_seq[pos]
+            label = labels[pos]
+            # skip is we are too close to a positive label
+            # if label == 0 and pre_label == 1 and pos - pre_pos < buffer:
+            #    continue
             if not (base == b"A" or base == b"T"):
                 continue
             start = pos - extend
@@ -507,26 +552,37 @@ class SMRThifi:
 
             if ip.shape[0] != window_size or pw.shape[0] != window_size:
                 continue
-            rtn = (A, C, G, T, ip, pw)
-            windows.append((labels[pos], strand, rtn))
-        return windows
+            window = np.vstack((A, C, G, T, ip, pw))
+            windows.append(window)
+            strands.append(strand)
+            out_labels.append(label)
+            pre_label = label
+            pre_pos = pos
+        return out_labels, strands, windows
+
+
+def make_hifi_kinetic_data_helper(rec, args=None):
+    hifi = SMRThifi(rec, buffer=args.buffer, train=args.train)
+    if hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
+        return None
+    data = hifi.get_windows(
+        window_size=args.window_size, subsample=args.sub_sample, buffer=args.buffer
+    )
+    return data
 
 
 def make_hifi_kinetic_data(bam_file, args):
     logging.info(f"Reading HiFi {bam_file}")
-    bam = pysam.AlignmentFile(bam_file, check_sq=False)
+    bam = pysam.AlignmentFile(bam_file, check_sq=False, threads=args.threads)
     labels = []
     strands = []
     windows = []
     for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
-        z = SMRThifi(rec)
-        if z.f_ip.shape[0] == 0 or z.r_ip.shape[0] == 0:
-            continue
-        for w in z.get_windows(window_size=args.window_size, subsample=args.sub_sample):
-            if w is not None:
-                labels.append(w[0])
-                strands.append(w[1])
-                windows.append(w[2])
+        data = make_hifi_kinetic_data_helper(rec, args)
+        if data is not None:
+            labels += data[0]
+            strands += data[1]
+            windows += data[2]
 
     labels = np.array(labels)
     strands = np.array(strands)
@@ -542,8 +598,24 @@ def make_hifi_kinetic_data(bam_file, args):
             f"Mean IPD at non-m6A:\t{non_m6a.mean():.4g} +/- {non_m6a.std():.4g}"
         )
         logging.info("")
+        pos = np.mean(windows[labels & (strand == strands), 4, :], axis=0)
+        neg = np.mean(windows[~labels & (strand == strands), 4, :], axis=0)
+        gp.plot(
+            pos,
+            _with="lines",
+            terminal="dumb 80,30",
+            unset="grid",
+            title=f"IPD at m6A on the {strand}",
+        )
+        gp.plot(
+            neg,
+            _with="lines",
+            terminal="dumb 80,30",
+            unset="grid",
+            title=f"IPD at non-m6A on the {strand}",
+        )
 
-    np.savez(args.out, features=windows, labels=labels)
+    np.savez(args.out, features=windows, labels=labels, strands=strands)
     z = np.load(args.out)
     data = z["features"]
     labels = z["labels"]
@@ -568,6 +640,7 @@ def main():
     parser.add_argument("-t", "--threads", type=int, default=8)
     parser.add_argument("-s", "--sub-sample", type=float, default=1.0)
     parser.add_argument("--hifi", action="store_true")
+    parser.add_argument("--train", action="store_true")
     args = parser.parse_args()
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
