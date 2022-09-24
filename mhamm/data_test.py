@@ -13,7 +13,8 @@ import pickle
 
 os.chdir(os.path.expanduser("~/git/m6A-calling"))
 
-import m6a_ml_data
+import mhamm.m6a_ml_data_bysubread as ml_data
+
 
 
 # Test that positive pickle works
@@ -21,7 +22,8 @@ positive_pickle_path = 'local/PositiveSMRTmatrix.pkl'
 
 positive = pickle.load(open(positive_pickle_path, "rb"))
 
-pos_feats, pos_labels, pos_others = m6a_ml_data.get_feat_labels_matrix(positive, req_label=1)
+pos_feats, pos_labels, pos_others = ml_data.get_feat_labels_matrix(positive, req_label=1)
+
 
 
 

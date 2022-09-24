@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+ <semantics>
+  <mfrac>
+   <mrow>
+    <mo fence="true" stretchy="false">(</mo>
+    <mrow>
+     <mrow>
+      <mi>P</mi>
+      <mrow>
+       <mrow>
+        <mo fence="true" stretchy="false">(</mo>
+        <mrow>
+         <mi mathvariant="italic">meth</mi>
+        </mrow>
+        <mo fence="true" stretchy="false">)</mo>
+       </mrow>
+       <mo stretchy="false">⋅</mo>
+       <mrow>
+        <munderover>
+         <mo stretchy="false">∏</mo>
+         <mrow>
+          <mi>i</mi>
+          <mo stretchy="false">=</mo>
+          <mn>1</mn>
+         </mrow>
+         <mi>n</mi>
+        </munderover>
+        <mi mathvariant="italic">PD</mi>
+       </mrow>
+      </mrow>
+      <mrow>
+       <mo fence="true" stretchy="false">(</mo>
+       <mrow>
+        <mrow>
+         <msub>
+          <mi>S</mi>
+          <mi>i</mi>
+         </msub>
+         <mo stretchy="false">∣</mo>
+         <mi mathvariant="italic">meth</mi>
+        </mrow>
+       </mrow>
+       <mo fence="true" stretchy="false">)</mo>
+      </mrow>
+     </mrow>
+    </mrow>
+    <mo fence="true" stretchy="false">)</mo>
+   </mrow>
+   <mrow>
+    <mo fence="true" stretchy="false">(</mo>
+    <mrow>
+     <mrow>
+      <mi>P</mi>
+      <mrow>
+       <mrow>
+        <mo fence="true" stretchy="false">(</mo>
+        <mrow>
+         <mi mathvariant="italic">meth</mi>
+        </mrow>
+        <mo fence="true" stretchy="false">)</mo>
+       </mrow>
+       <mo stretchy="false">⋅</mo>
+       <mrow>
+        <munderover>
+         <mo stretchy="false">∏</mo>
+         <mrow>
+          <mi>i</mi>
+          <mo stretchy="false">=</mo>
+          <mn>1</mn>
+         </mrow>
+         <mi>n</mi>
+        </munderover>
+        <mi mathvariant="italic">PD</mi>
+       </mrow>
+      </mrow>
+      <mrow>
+       <mrow>
+        <mo fence="true" stretchy="false">(</mo>
+        <mrow>
+         <mrow>
+          <msub>
+           <mi>S</mi>
+           <mi>i</mi>
+          </msub>
+          <mo stretchy="false">∣</mo>
+          <mi mathvariant="italic">meth</mi>
+         </mrow>
+        </mrow>
+        <mo fence="true" stretchy="false">)</mo>
+       </mrow>
+       <mo stretchy="false">+</mo>
+       <mi>P</mi>
+      </mrow>
+      <mrow>
+       <mrow>
+        <mo fence="true" stretchy="false">(</mo>
+        <mrow>
+         <mi mathvariant="italic">unmeth</mi>
+        </mrow>
+        <mo fence="true" stretchy="false">)</mo>
+       </mrow>
+       <mo stretchy="false">⋅</mo>
+       <mrow>
+        <munderover>
+         <mo stretchy="false">∏</mo>
+         <mrow>
+          <mi>i</mi>
+          <mo stretchy="false">=</mo>
+          <mn>1</mn>
+         </mrow>
+         <mi>n</mi>
+        </munderover>
+        <mi mathvariant="italic">PD</mi>
+       </mrow>
+      </mrow>
+      <mrow>
+       <mo fence="true" stretchy="false">(</mo>
+       <mrow>
+        <mrow>
+         <msub>
+          <mi>S</mi>
+          <mi>i</mi>
+         </msub>
+         <mo stretchy="false">∣</mo>
+         <mi mathvariant="italic">unmeth</mi>
+        </mrow>
+       </mrow>
+       <mo fence="true" stretchy="false">)</mo>
+      </mrow>
+     </mrow>
+    </mrow>
+    <mo fence="true" stretchy="false">)</mo>
+   </mrow>
+  </mfrac>
+  <annotation encoding="StarMath 5.0">{( P(meth) cdot  prod from{i=1} to{n} PD( S_{i} divides meth )  )} over {(P(meth) cdot  prod from{i=1} to{n} PD( S_{i} divides meth ) + P(unmeth) cdot prod from{i=1} to{n} PD( S_{i} divides unmeth ))} </annotation>
+ </semantics>
+</math>
