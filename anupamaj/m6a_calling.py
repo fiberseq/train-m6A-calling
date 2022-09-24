@@ -69,7 +69,7 @@ class DataGenerator(torch.utils.data.Dataset):
         return x, y
 
 
-def m6AGenerator(data_path, random_state=None, pin_memory=True,
+def m6AGenerator(data_path, input_size, random_state=None, pin_memory=True,
                  num_workers=0, batch_size=32):
     """
     This generator returns a training data generator as well as
@@ -93,9 +93,11 @@ def m6AGenerator(data_path, random_state=None, pin_memory=True,
     train_val_data = train_val_data['save_data_dict'][()]
 
     # Load training and validation features and labels
-    X_train = train_val_data['X_train']
+    # Sometimes we want to train on input subsets, this will 
+    # achieve that. 
+    X_train = train_val_data['X_train'][:, 0:input_size, :]
     y_train = train_val_data['y_train']
-    X_val = train_val_data['X_val']
+    X_val = train_val_data['X_val'][:, 0:input_size, :]
     y_val = train_val_data['y_val']
 
     print(f"Training features shape {X_train.shape}, training labels shape: {y_train.shape}")
@@ -312,22 +314,29 @@ if __name__ == "__main__":
     parser.add_argument(
         '--train_data',
         type=str,
-        default="../data/m6A_train_more.npz",
+        default="../data/m6A_train_more_large.npz",
         help="path to the training npz file. Default is in the data directory"
     )
     
     parser.add_argument(
         '--model_save_path',
         type=str,
-        default="models/m6ANet_more",
+        default="models/m6ANet_more_large",
         help="Path of the model to be stored."
     )
     
     parser.add_argument(
         '--device',
         type=str,
-        default='cuda',
+        default='CPU',
         help="Training on CPU or CUDA. Default is CPU"
+    )
+    
+    parser.add_argument(
+        '--input_size',
+        type=int,
+        default=7,
+        help="Input size."
     )
 
     args = parser.parse_args()
@@ -337,17 +346,17 @@ if __name__ == "__main__":
     
     if args.device=='cuda':
         force_cudnn_initialization()
-
+    
     # Move the model to appropriate device
-    model = M6ANet(model_name=args.model_save_path).to(args.device)
+    model = M6ANet(input_size=args.input_size, model_name=args.model_save_path).to(args.device)
     # Adam optimizer with learning rate 1e-4
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     
     # Print model architecture summary
-    summary_str = summary(model, input_size=(7, 15))
+    summary_str = summary(model, input_size=(args.input_size, 15))
     
     # Get training data generator and validation data. 
-    X_train, (X_val, y_val) = m6AGenerator(args.train_data, random_state=None, pin_memory=True, num_workers=2,
+    X_train, (X_val, y_val) = m6AGenerator(args.train_data, input_size=args.input_size, random_state=None, pin_memory=True, num_workers=2,
                                             batch_size=32)
     
     # Train the model
@@ -355,6 +364,6 @@ if __name__ == "__main__":
                         optimizer,
                         X_valid=X_val, 
                         y_valid=y_val,
-                        max_epochs=20, 
+                        max_epochs=30, 
                         device=args.device)
     
