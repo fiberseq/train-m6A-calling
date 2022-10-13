@@ -238,22 +238,15 @@ def get_feat_labels_matrix(smrt_obj, req_label=1):
                 pw = np.array(pw)
                 ip = ip / 255
                 pw = pw / 255
-                # print(f"ip: {ip.shape}")
-                # print(f"pw: {pw.shape}")
+                
                 # take mean along genomic position axis
                 ip_avg = np.mean(ip, axis=0)
                 pw_avg = np.mean(pw, axis=0)
 
-                # print(f"ip_avg: {ip_avg.shape}")
-                # print(f"pw_avg: {pw_avg.shape}")
-
+            
                 offset = np.abs(smrt_obj[i].offset)
 
-                # print(f"offset: {offset.shape}")
-
                 offset_mean = np.mean(offset, axis=0)
-
-                # print(f"offset_mean: {offset_mean.shape}")
 
                 offset_mean = 1.0 / (offset_mean + 1.0)
 
