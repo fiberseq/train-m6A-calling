@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from bz2 import compress
 import pysam
 import tqdm
 import numpy as np
@@ -467,6 +468,7 @@ class SMRThifi:
     def get_windows(self, window_size=15, subsample=1, buffer=30):
         return SMRThifi.get_windows_helper(
             self.seq,
+            self.rec.query_name,
             self.labels,
             self.positions,
             self.f_m6a,
@@ -483,6 +485,7 @@ class SMRThifi:
     @njit()
     def get_windows_helper(
         self_seq,
+        fiber,
         labels,
         positions,
         self_f_m6a,
@@ -512,6 +515,7 @@ class SMRThifi:
         out_labels = []
         strands = []
         windows = []
+        out_positions = []
         pre_label = -1
         pre_pos = -1
         for pos, base in zip(positions, self_seq[positions]):
@@ -535,16 +539,16 @@ class SMRThifi:
             # if the incorporated base is A then revcomp the sequence and values
             if base == b"A":
                 strand = 1
-                ip = self_r_ip[start:end]
-                pw = self_r_pw[start:end]
+                ip = self_r_ip[start:end] / 255.0
+                pw = self_r_pw[start:end] / 255.0
                 T = At[::-1]
                 G = Ct[::-1]
                 C = Gt[::-1]
                 A = Tt[::-1]
             elif base == b"T":
                 strand = 0
-                ip = self_f_ip[start:end]
-                pw = self_f_pw[start:end]
+                ip = self_f_ip[start:end] / 255.0
+                pw = self_f_pw[start:end] / 255.0
                 A = At
                 C = Ct
                 G = Gt
@@ -556,9 +560,10 @@ class SMRThifi:
             windows.append(window)
             strands.append(strand)
             out_labels.append(label)
+            out_positions.append(pos)
             pre_label = label
             pre_pos = pos
-        return out_labels, strands, windows
+        return out_labels, strands, windows, out_positions, [fiber] * len(windows)
 
 
 def make_hifi_kinetic_data_helper(rec, args=None):
@@ -577,16 +582,25 @@ def make_hifi_kinetic_data(bam_file, args):
     labels = []
     strands = []
     windows = []
+    positions = []
+    fibers = []
     for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
         data = make_hifi_kinetic_data_helper(rec, args)
         if data is not None:
             labels += data[0]
             strands += data[1]
             windows += data[2]
+            positions += data[3]
+            fibers += data[4]
 
     labels = np.array(labels)
     strands = np.array(strands)
     windows = np.array(windows)
+    positions = np.array(positions)
+    fibers = np.array(fibers)
+    for z in [labels, strands, windows, positions, fibers]:
+        logging.info(f"{z.shape}")
+
     for strand in [0, 1]:
         central_ip = windows[labels & (strand == strands), 4, args.window_size // 2]
         non_m6a = windows[~labels & (strand == strands), 4, args.window_size // 2]
@@ -615,7 +629,14 @@ def make_hifi_kinetic_data(bam_file, args):
             title=f"IPD at non-m6A on the {strand}",
         )
 
-    np.savez(args.out, features=windows, labels=labels, strands=strands)
+    np.savez_compressed(
+        args.out,
+        features=windows,
+        labels=labels,
+        strands=strands,
+        positions=positions,
+        fibers=fibers,
+    )
     z = np.load(args.out)
     data = z["features"]
     labels = z["labels"]
