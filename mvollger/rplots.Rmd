@@ -119,29 +119,47 @@ ip_df %>%
 
 
 ```{r}
-ft1=fread("~/Desktop/unaligned.fiberseq.tbl.gz", nrows = 10000) 
-ft2 = fread("~/Desktop/tmp.tbl.gz", nrows = 10000)
-dim(ft2)
+ft1=fread("~/Desktop/unaligned.fiberseq.tbl.gz", nrows = 10000) %>% select(-fiber_sequence)
+```
+
+```{r}
+read_m6a = function(file, nrows = 10000){
+  fread(file, nrows = nrows) %>%
+    select(m6a, fiber, m6a_qual) %>%
+    filter(m6a!=".") %>%
+    mutate(index = row_number()) %>%
+    mutate(
+      m6a = strsplit(m6a,","),
+      m6a_qual = strsplit(m6a_qual, ",")
+    ) %>%
+    unnest(cols = c(m6a, m6a_qual)) %>%
+    mutate(
+      m6a = as.numeric(m6a),
+      m6a_qual = as.numeric(m6a_qual)
+    ) %>%
+    filter(m6a_qual > 100) %>%
+    data.table()
+}
+ft1 = read_m6a("~/Desktop/temp/unaligned.fiberseq.tbl.gz")
+```
+
+```{r}
+ft2 = read_m6a("~/Desktop/temp/tmp.tbl.gz")
+```
+
+```{r}
 dist_df = bind_rows(list(o=ft1, n=ft2), .id="id") %>%
-  #filter(ec >= 12) %>%
-  select(m6a, fiber,id) %>%
-  filter(m6a!=".") %>%
-  group_by(id) %>%
-  mutate(index = row_number()) %>%
-  cSplit("m6a", direction = "long") %>%
-  group_by(index) %>%
+  filter(m6a_qual > 247) %>%
+  group_by(id, index) %>%
+  arrange(m6a) %>%
   mutate(
     n=n(),
-    m6a = as.numeric(m6a),
     dist = m6a - lag(m6a)
     ) %>%
   drop_na() %>%
   data.table()
 fibers = intersect(unique(dist_df[id == "n"]$fiber), unique(dist_df[id=="o"]$fiber))
-head(fibers)
-length(fibers)
-dist_df = dist_df %>%
-  filter(fiber %in% fibers)
+#dist_df = dist_df %>% filter(fiber %in% fibers)
 ```
 
 ```{r}
@@ -149,7 +167,7 @@ dist_df %>%
   filter(dist <300, dist > 50) %>%
   ggplot(aes(x=dist, fill=id))+
   geom_histogram(binwidth = 1,alpha = 0.5, 
-                 #aes(y=..density..),
+                 aes(y=..density..),
                  position = "identity")+
   #scale_x_continuous(trans="log10")+
   #facet_row(~id)+

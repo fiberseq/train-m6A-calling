@@ -593,6 +593,9 @@ def make_hifi_kinetic_data(bam_file, args):
             positions += data[3]
             fibers += data[4]
 
+    for z in [labels, strands, windows, positions, fibers]:
+        logging.info(f"{len(z)}")
+
     labels = np.array(labels)
     strands = np.array(strands)
     windows = np.array(windows)
