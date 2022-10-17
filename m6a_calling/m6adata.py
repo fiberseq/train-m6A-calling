@@ -569,7 +569,6 @@ class SMRThifi:
 def make_hifi_kinetic_data_helper(rec, args=None):
     hifi = SMRThifi(rec, buffer=args.buffer, train=args.train)
     if hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
-        print("here")
         return None
     data = hifi.get_windows(
         window_size=args.window_size, subsample=args.sub_sample, buffer=args.buffer
@@ -588,6 +587,7 @@ def make_hifi_kinetic_data(bam_file, args):
     for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
         data = make_hifi_kinetic_data_helper(rec, args)
         if data is not None:
+            print("here")
             labels += data[0]
             strands += data[1]
             windows += data[2]
