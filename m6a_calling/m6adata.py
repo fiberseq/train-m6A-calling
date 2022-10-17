@@ -586,6 +586,7 @@ def make_hifi_kinetic_data(bam_file, args):
     fibers = []
     for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
         data = make_hifi_kinetic_data_helper(rec, args)
+        print(data)
         if data is not None:
             print("here")
             labels += data[0]
