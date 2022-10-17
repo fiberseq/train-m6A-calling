@@ -38,7 +38,7 @@ def get_hifi_data(hifi_data_file):
 
     # Normalize the IP and PW data by dividing by 255.0
     # IP is index 4 and PW is index 5.
-    hifi_feats[:, 4:6, :] = hifi_feats[:, 4:6, :] / 255.0
+    #hifi_feats[:, 4:6, :] = hifi_feats[:, 4:6, :] / 255.0
 
     return hifi_feats, m6a_labels
 
@@ -93,7 +93,7 @@ def save_train_val_test_data(hifi_data_file, train_save_path, test_save_path):
     save_data_dict['X_val'] = X_val
     save_data_dict['y_val'] = y_val
 
-    np.savez(train_save_path, save_data_dict=save_data_dict)
+    np.savez_compressed(train_save_path, save_data_dict=save_data_dict, compress=True)
 
     print(f"Saved training and validation data at: {train_save_path}")
 
@@ -102,7 +102,7 @@ def save_train_val_test_data(hifi_data_file, train_save_path, test_save_path):
     save_data_dict['X_test'] = X_test
     save_data_dict['y_test'] = y_test
 
-    np.savez(test_save_path, save_data_dict=save_data_dict)
+    np.savez_compressed(test_save_path, save_data_dict=save_data_dict, compress=True)
 
     print(f"Saved test data at: {test_save_path}")
 
