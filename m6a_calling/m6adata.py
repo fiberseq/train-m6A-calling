@@ -507,6 +507,7 @@ class SMRThifi:
         Gb = np.frombuffer(b"G", dtype="S1")
         Tb = np.frombuffer(b"T", dtype="S1")
 
+        print(positions)
         if subsample < 1:
             positions = np.random.choice(
                 positions, size=int(len(positions) * subsample), replace=False
