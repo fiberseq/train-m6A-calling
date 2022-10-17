@@ -69,12 +69,13 @@ class DataGenerator(torch.utils.data.Dataset):
         return x, y
 
 
-def m6AGenerator(data_path, input_size, random_state=None, pin_memory=True,
+def m6AGenerator(train_path, val_path, input_size, random_state=None, pin_memory=True,
                  num_workers=0, batch_size=32):
     """
     This generator returns a training data generator as well as
     validation features and labels
-    :param data_path: str, path where the data matrix is stored.
+    :param train_path: str, path where the training data is stored.
+    :param val_path: str, path where the val data is stored.
     :param random_state: int, seed for numpy random_state.
     :param pin_memory: bool, Makes CUDA efficient by skipping one copy
                              operation, true by default.
@@ -86,35 +87,44 @@ def m6AGenerator(data_path, input_size, random_state=None, pin_memory=True,
     # initialize Random state
     random_state = np.random.RandomState(random_state)
 
-    # Load training and validation data
-    train_val_data = np.load(data_path, allow_pickle=True)
-
-    # Get the dictionary from the containing relevant data
-    train_val_data = train_val_data['save_data_dict'][()]
-
+    # Load training data
+    train_data = np.load(train_path, allow_pickle=True)
+    
     # Load training and validation features and labels
     # Sometimes we want to train on input subsets, this will 
     # achieve that. 
-    X_train = train_val_data['X_train'][:, 0:input_size, :]
-    y_train = train_val_data['y_train']
-    X_val = train_val_data['X_val'][:, 0:input_size, :]
-    y_val = train_val_data['y_val']
+    X_train = train_data["features"][:, 0:input_size, :]
+    y_train = train_data["labels"]
+    
+    y_train_ohe = np.zeros((len(y_train), 2))
+    y_train_ohe[np.where(y_train == 1)[0], 0] = 1
+    y_train_ohe[np.where(y_train == 0)[0], 1] = 1
+    
+    # Load validation data
+    val_data = np.load(val_path, allow_pickle=True)
+    X_val = val_data['features'][:, 0:input_size, :]
+    y_val = val_data['labels']
+    
+    y_val_ohe = np.zeros((len(y_val), 2))
+    y_val_ohe[np.where(y_val == 1)[0], 0] = 1
+    y_val_ohe[np.where(y_val == 0)[0], 1] = 1
 
     print(f"Training features shape {X_train.shape}, training labels shape: {y_train.shape}")
     print(f"Validation features shape {X_val.shape}, validation labels shape: {y_val.shape}")
 
     # Get the training data generator
     X_gen = DataGenerator(X_train,
-                          y_train,
+                          y_train_ohe,
                           random_state=random_state)
 
     # Wrap it in a data loader
     X_gen = torch.utils.data.DataLoader(X_gen,
                                         pin_memory=pin_memory,
                                         num_workers=num_workers,
-                                        batch_size=batch_size)
+                                        batch_size=batch_size, 
+                                        shuffle=True)
 
-    return X_gen, (X_val, y_val)
+    return X_gen, (X_val, y_val_ohe)
 
 
 class M6ANet(torch.nn.Module):
@@ -284,7 +294,6 @@ class M6ANet(torch.nn.Module):
                         sklearn_acc = accuracy_score(y_valid_metric.cpu().numpy(), pred_valid_metric.cpu().numpy())
 
                         print(f"Epoch {epoch}, iteration {iteration}, train loss: {(avg_train_loss / avg_train_iter):4.4f}, validation loss: {valid_loss:4.4f}")
-
                         print(f"Validation iteration {iteration}, AUPR: {sklearn_ap}, Accuracy: {sklearn_acc}, AUROC: {sklearn_rocauc}")
 
                         if sklearn_rocauc > best_auroc:
@@ -314,22 +323,36 @@ if __name__ == "__main__":
     parser.add_argument(
         '--train_data',
         type=str,
-        default="../data/m6A_train_more_large.npz",
+        default="../data/large.PS00075.npz",
         help="path to the training npz file. Default is in the data directory"
+    )
+    
+    parser.add_argument(
+        '--val_data',
+        type=str,
+        default="../data/PS00075_2.val.npz",
+        help="path to the val npz file. Default is in the data directory"
+    )
+    
+    parser.add_argument(
+        '--pretrain_model',
+        type=str,
+        default="models/m6ANet_other_half_hifi.3.best.torch",
+        help="Path of the model to be stored."
     )
     
     parser.add_argument(
         '--model_save_path',
         type=str,
-        default="models/m6ANet_more_large",
+        default="models/m6ANet_PS00075",
         help="Path of the model to be stored."
     )
     
     parser.add_argument(
         '--device',
         type=str,
-        default='CPU',
-        help="Training on CPU or CUDA. Default is CPU"
+        default='cpu',
+        help="Training on cpu or cuda. Default is cuda"
     )
     
     parser.add_argument(
@@ -347,8 +370,12 @@ if __name__ == "__main__":
     if args.device=='cuda':
         force_cudnn_initialization()
     
+    model = torch.load(args.pretrain_model).to(args.device)
+    
     # Move the model to appropriate device
-    model = M6ANet(input_size=args.input_size, model_name=args.model_save_path).to(args.device)
+    # model = M6ANet(input_size=args.input_size, model_name=args.model_save_path).to(args.device)
+    model.name = args.model_save_path
+    
     # Adam optimizer with learning rate 1e-4
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     
@@ -356,8 +383,8 @@ if __name__ == "__main__":
     summary_str = summary(model, input_size=(args.input_size, 15))
     
     # Get training data generator and validation data. 
-    X_train, (X_val, y_val) = m6AGenerator(args.train_data, input_size=args.input_size, random_state=None, pin_memory=True, num_workers=2,
-                                            batch_size=32)
+    X_train, (X_val, y_val) = m6AGenerator(args.train_data, args.val_data, input_size=args.input_size, 
+                                           random_state=None, pin_memory=True, num_workers=2, batch_size=32)
     
     # Train the model
     model.fit_generator(X_train,
@@ -365,5 +392,6 @@ if __name__ == "__main__":
                         X_valid=X_val, 
                         y_valid=y_val,
                         max_epochs=30, 
+                        validation_iter=300000,
                         device=args.device)
     
