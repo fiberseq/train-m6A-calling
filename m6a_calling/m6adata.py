@@ -569,6 +569,7 @@ class SMRThifi:
 def make_hifi_kinetic_data_helper(rec, args=None):
     hifi = SMRThifi(rec, buffer=args.buffer, train=args.train)
     if hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
+        print("here")
         return None
     data = hifi.get_windows(
         window_size=args.window_size, subsample=args.sub_sample, buffer=args.buffer
