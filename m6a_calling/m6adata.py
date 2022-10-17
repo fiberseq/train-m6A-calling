@@ -511,6 +511,7 @@ class SMRThifi:
             positions = np.random.choice(
                 positions, size=int(len(positions) * subsample), replace=False
             )
+        print(positions)
 
         out_labels = []
         strands = []
@@ -586,9 +587,7 @@ def make_hifi_kinetic_data(bam_file, args):
     fibers = []
     for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
         data = make_hifi_kinetic_data_helper(rec, args)
-        print(data)
         if data is not None:
-            print("here")
             labels += data[0]
             strands += data[1]
             windows += data[2]
