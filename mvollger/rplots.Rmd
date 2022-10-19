@@ -149,7 +149,7 @@ ft2 = read_m6a("~/Desktop/temp/tmp.tbl.gz")
 
 ```{r}
 dist_df = bind_rows(list(o=ft1, n=ft2), .id="id") %>%
-  filter(m6a_qual > 247) %>%
+  filter(m6a_qual > 251) %>%
   group_by(id, index) %>%
   arrange(m6a) %>%
   mutate(
@@ -177,7 +177,7 @@ dist_df %>%
 dist_df %>%
   filter(dist <500, dist > 30) %>%
   group_by(id) %>%
-  summarise(median(dist))
+  summarise(median(dist), n())
 ```
 
 ```{r}

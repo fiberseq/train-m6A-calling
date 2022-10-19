@@ -539,8 +539,10 @@ class SMRThifi:
             # if the incorporated base is A then revcomp the sequence and values
             if base == b"A":
                 strand = 1
-                ip = self_r_ip[start:end] / 255.0
-                pw = self_r_pw[start:end] / 255.0
+                # need to reverse again after grabbing profiles.
+                # not 100% sure why however, empirically it makes the PW and IPD align better.
+                ip = self_r_ip[start:end][::-1] / 255.0
+                pw = self_r_pw[start:end][::-1] / 255.0
                 T = At[::-1]
                 G = Ct[::-1]
                 C = Gt[::-1]
@@ -607,10 +609,15 @@ def make_hifi_kinetic_data(bam_file, args):
     for strand in [0, 1]:
         central_ip = windows[labels & (strand == strands), 4, args.window_size // 2]
         non_m6a = windows[~labels & (strand == strands), 4, args.window_size // 2]
+        p_base_ave = windows[labels & (strand == strands), 0:4, 5:10].mean(axis=0)
+        n_base_ave = windows[~labels & (strand == strands), 0:4, 5:10].mean(axis=0)
         logging.info(f"Strand: {strand}")
+
         logging.info(
             f"Mean IPD at m6A:\t{central_ip.mean():.4g} +/- {central_ip.std():.4g}"
         )
+        logging.info(f"Base weights:\n{p_base_ave}")
+        logging.info(f"Base weights:\n{n_base_ave}")
         logging.info(
             f"Mean IPD at non-m6A:\t{non_m6a.mean():.4g} +/- {non_m6a.std():.4g}"
         )
