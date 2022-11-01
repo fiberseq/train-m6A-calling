@@ -415,7 +415,7 @@ class SMRThifi:
         ip_means = []
         for base in [b"A", b"C", b"G", b"T"]:
             is_base = self.seq == base
-            if is_base.sum() > 0:
+            if is_base.sum() > 0 and self.f_pw.shape[0] > 0 and self.f_ip.shape[0] > 0:
                 pw_means.append(np.median(self.f_pw[is_base]) / 255.0)
                 ip_means.append(np.median(self.f_ip[is_base]) / 255.0)
             else:
