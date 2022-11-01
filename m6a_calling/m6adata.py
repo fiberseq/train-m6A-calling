@@ -415,7 +415,6 @@ class SMRThifi:
         if train:
             self.nuc_starts = self.get_tag("ns")
             self.nuc_lengths = self.get_tag("nl")
-
             if (
                 self.nuc_lengths.sum() < min_nuc_bp
                 or self.nuc_lengths.shape[0] < min_nucs
@@ -426,15 +425,14 @@ class SMRThifi:
                 self.r_ip == np.array([])
                 self.f_pw == np.array([])
                 self.r_pw == np.array([])
-                return
-
-            logging.debug(f"{self.nuc_starts.shape}")
-            keep = SMRThifi.filter_negatives_by_nucleosomes(
-                positions, self.nuc_starts, self.nuc_lengths, self.labels, buffer
-            )
-            logging.debug(
-                f"{keep.sum()} positions kept, {len(keep) - keep.sum()} positions removed"
-            )
+            else:
+                logging.debug(f"{self.nuc_starts.shape}")
+                keep = SMRThifi.filter_negatives_by_nucleosomes(
+                    positions, self.nuc_starts, self.nuc_lengths, self.labels, buffer
+                )
+                logging.debug(
+                    f"{keep.sum()} positions kept, {len(keep) - keep.sum()} positions removed"
+                )
         else:
             keep = 1
         is_AT = (self.seq == b"A") | (self.seq == b"T")
