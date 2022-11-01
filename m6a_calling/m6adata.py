@@ -393,7 +393,7 @@ class SMRThifi:
     labels: np.ndarray
     positions: np.ndarray
 
-    def __init__(self, rec, train=False, buffer=15):
+    def __init__(self, rec, min_nuc_bp=2000, min_nucs=10, train=False, buffer=15):
         self.rec = rec
         self.seq = np.frombuffer(bytes(self.rec.query_sequence, "utf-8"), dtype="S1")
         self.f_ip = self.get_tag("fi")
@@ -415,6 +415,19 @@ class SMRThifi:
         if train:
             self.nuc_starts = self.get_tag("ns")
             self.nuc_lengths = self.get_tag("nl")
+
+            if (
+                self.nuc_lengths.sum() < min_nuc_bp
+                or self.nuc_lengths.shape[0] < min_nucs
+            ):
+                logging.info("Too few nucleosomes or nucleosome bases")
+                self.m6a_calls = None
+                self.f_ip == np.array([])
+                self.r_ip == np.array([])
+                self.f_pw == np.array([])
+                self.r_pw == np.array([])
+                return
+
             logging.debug(f"{self.nuc_starts.shape}")
             keep = SMRThifi.filter_negatives_by_nucleosomes(
                 positions, self.nuc_starts, self.nuc_lengths, self.labels, buffer
@@ -670,6 +683,8 @@ def main():
     parser.add_argument("-b", "--buffer", type=int, default=15)
     parser.add_argument("-t", "--threads", type=int, default=8)
     parser.add_argument("-s", "--sub-sample", type=float, default=1.0)
+    parser.add_argument("--min-nuc-bp", type=int, default=2000)
+    parser.add_argument("--min-nucs", type=int, default=10)
     parser.add_argument("--hifi", action="store_true")
     parser.add_argument("--train", action="store_true")
     args = parser.parse_args()

@@ -2,7 +2,7 @@
 title: "R Notebook"
 output: html_notebook
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r, echo=FALSE}
@@ -13,6 +13,7 @@ library(ggforce)
 library(cowplot)
 library(dplyr)
 library(splitstackshape)
+library(ggridges)
 ```
 
 ```{r}
@@ -96,12 +97,9 @@ long %>%
   theme_minimal_grid()
 ```
 
-
-
 ```{r}
 ip_df = fread("data/ip_df.csv.gz")
 ```
-
 
 ```{r}
 dim(ip_df)/1e6
@@ -115,11 +113,6 @@ ip_df %>%
   ggplot(aes(x=pos, y=ip, color=label, group=label)) +
   geom_point() +
   geom_line()
-```
-
-
-```{r}
-ft1=fread("~/Desktop/unaligned.fiberseq.tbl.gz", nrows = 10000) %>% select(-fiber_sequence)
 ```
 
 ```{r}
@@ -137,19 +130,38 @@ read_m6a = function(file, nrows = 10000){
       m6a = as.numeric(m6a),
       m6a_qual = as.numeric(m6a_qual)
     ) %>%
-    filter(m6a_qual > 100) %>%
+    #filter(m6a_qual > 100) %>%
     data.table()
 }
 ft1 = read_m6a("~/Desktop/temp/unaligned.fiberseq.tbl.gz")
+ft3 = read_m6a("~/Desktop/temp/PS00075_1.fiberseq.strip_meth_tags.gamma_v4_cov1.bam.tbl.gz")
 ```
 
 ```{r}
-ft2 = read_m6a("~/Desktop/temp/tmp.tbl.gz")
+ft2 = read_m6a("~/Desktop/temp/cnn.tbl.gz")
+ft4 = read_m6a("~/Desktop/temp/xgb.tbl.gz")
+t = bind_rows(list(o=ft1, cnn=ft2, xgb=ft4, pb=ft3), .id="id")
 ```
 
 ```{r}
-dist_df = bind_rows(list(o=ft1, n=ft2), .id="id") %>%
-  filter(m6a_qual > 251) %>%
+t %>%
+  group_by(id) %>%
+  filter(id != "o") %>%
+  sample_n(20000) %>%
+  ggplot(aes(x=m6a_qual, fill=id, color=id)) +
+  geom_histogram(position="dodge",
+                 alpha=0.5,
+                 binwidth = 1
+                 ) +
+  facet_row(~id, scales = "free_y") +
+  #scale_y_continuous(trans="log10") +
+  theme_minimal_grid()
+```
+
+```{r}
+dist_df = t %>%
+  filter(m6a_qual >= 100) %>%
+  filter(!(id == "pb" & m6a_qual < 250)) %>%
   group_by(id, index) %>%
   arrange(m6a) %>%
   mutate(
@@ -160,17 +172,22 @@ dist_df = bind_rows(list(o=ft1, n=ft2), .id="id") %>%
   data.table()
 fibers = intersect(unique(dist_df[id == "n"]$fiber), unique(dist_df[id=="o"]$fiber))
 #dist_df = dist_df %>% filter(fiber %in% fibers)
-```
 
-```{r}
+
 dist_df %>%
   filter(dist <300, dist > 50) %>%
-  ggplot(aes(x=dist, fill=id))+
-  geom_histogram(binwidth = 1,alpha = 0.5, 
-                 aes(y=..density..),
-                 position = "identity")+
+  ggplot(aes(x=dist,
+             #fill=id,
+             color=id
+             )
+         )+
+ # geom_histogram(binwidth = 1,alpha = 0.5, 
+#                 aes(y=..density..),
+#                 position = "identity")+
+  geom_density(aes(y=..scaled..), adjust=0.2, size = 1, alpha =0.68)+
+  #facet_wrap(~id) +
   #scale_x_continuous(trans="log10")+
-  #facet_row(~id)+
+  #facet_col(~id)+
   #scale_y_continuous(trans="log10")+
   theme_minimal_grid() 
 
