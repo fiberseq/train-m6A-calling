@@ -410,6 +410,15 @@ class SMRThifi:
             labels[self.r_m6a] = True
         self.labels = labels
 
+        # get average kinetics for the reads
+        pw_means = []
+        ip_means = []
+        for base in [b"A", b"C", b"G", b"T"]:
+            pw_means.append(np.median(self.f_pw[self.seq == base]) / 255.0)
+            ip_means.append(np.median(self.f_ip[self.seq == base]) / 255.0)
+        self.pw_means = np.array(pw_means)
+        self.ip_means = np.array(ip_means)
+
         # set up positions we will call
         positions = np.arange(len(self.seq))
         if train:
@@ -421,10 +430,10 @@ class SMRThifi:
             ):
                 logging.debug("Too few nucleosomes or nucleosome bases")
                 self.m6a_calls = None
-                self.f_ip == np.array([])
-                self.r_ip == np.array([])
-                self.f_pw == np.array([])
-                self.r_pw == np.array([])
+                self.f_ip = np.array([])
+                self.r_ip = np.array([])
+                self.f_pw = np.array([])
+                self.r_pw = np.array([])
                 keep = 1
             else:
                 logging.debug(f"{self.nuc_starts.shape}")
@@ -593,7 +602,7 @@ def make_hifi_kinetic_data_helper(rec, args=None):
     data = hifi.get_windows(
         window_size=args.window_size, subsample=args.sub_sample, buffer=args.buffer
     )
-    return data
+    return data + (len(data[0]) * [hifi.pw_means], len(data[0]) * [hifi.ip_means])
 
 
 def make_hifi_kinetic_data(bam_file, args):
@@ -604,6 +613,8 @@ def make_hifi_kinetic_data(bam_file, args):
     windows = []
     positions = []
     fibers = []
+    pw_means = []
+    ip_means = []
     for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
         data = make_hifi_kinetic_data_helper(rec, args)
         if data is not None:
@@ -612,6 +623,8 @@ def make_hifi_kinetic_data(bam_file, args):
             windows += data[2]
             positions += data[3]
             fibers += data[4]
+            pw_means += data[5]
+            ip_means += data[6]
 
     for z in [labels, strands, windows, positions, fibers]:
         logging.info(f"{len(z)}")
@@ -621,7 +634,9 @@ def make_hifi_kinetic_data(bam_file, args):
     windows = np.array(windows)
     positions = np.array(positions)
     fibers = np.array(fibers)
-    for z in [labels, strands, windows, positions, fibers]:
+    ip_means = np.array(ip_means)
+    pw_means = np.array(pw_means)
+    for z in [labels, strands, windows, positions, fibers, pw_means, ip_means]:
         logging.info(f"{z.shape}")
 
     for strand in [0, 1]:
@@ -664,6 +679,8 @@ def make_hifi_kinetic_data(bam_file, args):
         strands=strands,
         positions=positions,
         fibers=fibers,
+        ip_means=ip_means,
+        pw_means=pw_means,
     )
     z = np.load(args.out)
     data = z["features"]
