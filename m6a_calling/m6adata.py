@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from bz2 import compress
+from curses import window
 import pysam
 import tqdm
 import numpy as np
@@ -687,10 +688,11 @@ def make_hifi_kinetic_data(bam_file, args):
         ip_means=ip_means,
         pw_means=pw_means,
     )
-    z = np.load(args.out)
-    data = z["features"]
-    labels = z["labels"]
-    logging.info(f"Data shape: {data.shape}; Labels shape: {labels.shape}")
+
+    # z = np.load(args.out)
+    # windows = z["features"]
+    # labels = z["labels"]
+    logging.info(f"Data shape: {windows.shape}; Labels shape: {labels.shape}")
     logging.info(
         f"Positives: {labels.sum():,}\tNegatives: {len(labels) - labels.sum():,}"
     )
