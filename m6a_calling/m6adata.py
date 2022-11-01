@@ -426,7 +426,6 @@ class SMRThifi:
                 self.f_pw == np.array([])
                 self.r_pw == np.array([])
                 keep = 1
-                return None
             else:
                 logging.debug(f"{self.nuc_starts.shape}")
                 keep = SMRThifi.filter_negatives_by_nucleosomes(
