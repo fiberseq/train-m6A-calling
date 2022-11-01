@@ -419,13 +419,14 @@ class SMRThifi:
                 self.nuc_lengths.sum() < min_nuc_bp
                 or self.nuc_lengths.shape[0] < min_nucs
             ):
-                logging.info("Too few nucleosomes or nucleosome bases")
+                logging.debug("Too few nucleosomes or nucleosome bases")
                 self.m6a_calls = None
                 self.f_ip == np.array([])
                 self.r_ip == np.array([])
                 self.f_pw == np.array([])
                 self.r_pw == np.array([])
                 keep = 1
+                return None
             else:
                 logging.debug(f"{self.nuc_starts.shape}")
                 keep = SMRThifi.filter_negatives_by_nucleosomes(
@@ -588,7 +589,7 @@ def make_hifi_kinetic_data_helper(rec, args=None):
         min_nuc_bp=args.min_nuc_bp,
         min_nucs=args.min_nucs,
     )
-    if hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
+    if hifi is None or hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
         return None
     data = hifi.get_windows(
         window_size=args.window_size, subsample=args.sub_sample, buffer=args.buffer
