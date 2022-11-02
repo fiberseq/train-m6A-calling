@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-from bz2 import compress
-from curses import window
 import pysam
 import tqdm
 import numpy as np
-from numba import njit, jit, prange
+from numba import njit
 from dataclasses import dataclass, fields
 import logging
 import pandas as pd
