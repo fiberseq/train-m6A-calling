@@ -4,6 +4,56 @@ from xgboost import XGBClassifier
 from sklearn.model_selection import GridSearchCV
 import gc
 import argparse
+import os
+import struct
+from ctypes import cdll
+from ctypes import c_float, c_uint, c_char_p, c_bool
+
+# function to allow xgboost model to be used in rust with gbdt-rs
+# taken from:
+# https://github.com/mesalock-linux/gbdt-rs/blob/master/examples/convert_xgboost.py
+def convert(input_model, objective, output_file):
+    model = xgb.Booster()
+    model.load_model(input_model)
+    tmp_file = output_file + ".gbdt_rs.mid"
+    # extract base score
+    try:
+        with open(input_model, "rb") as f:
+            model_format = struct.unpack("cccc", f.read(4))
+            model_format = b"".join(model_format)
+            if model_format == b"bs64":
+                print("This model type is not supported")
+            elif model_format != "binf":
+                f.seek(0)
+            base_score = struct.unpack("f", f.read(4))[0]
+    except Exception as e:
+        print("error: ", e)
+        return 1
+
+    if os.path.exists(tmp_file):
+        print(
+            "Intermediate file %s exists. Please remove this file or change your output file path"
+            % tmp_file
+        )
+        return 1
+
+    # dump json
+    model.dump_model(tmp_file, dump_format="json")
+
+    # add base score to json file
+    try:
+        with open(output_file, "w") as f:
+            f.write(repr(base_score) + "\n")
+            with open(tmp_file) as f2:
+                for line in f2.readlines():
+                    f.write(line)
+    except Exception as e:
+        print("error: ", e)
+        os.remove(tmp_file)
+        return 1
+
+    os.remove(tmp_file)
+    return 0
 
 
 def train_xgb(train_data_path, val_data_path, out, cv=False, n_train=25_000_000):
@@ -109,7 +159,7 @@ def main():
     )
     parser.add_argument(
         "out",
-        help="output model path",
+        help="output model path, should have a .bin extension",
     )
     parser.add_argument(
         "--n-train",
@@ -121,6 +171,7 @@ def main():
         action="store_true",
         help="Run cross validation, for devs only",
     )
+    parser.add_argument("objective", default="binary:logistic")
     args = parser.parse_args()
     train_xgb(
         args.train_data_path,
@@ -129,6 +180,7 @@ def main():
         cv=args.cv,
         n_train=args.n_train,
     )
+    convert(args.out, args.objective, f"{args.out}.json")
 
 
 if __name__ == "__main__":
