@@ -10,9 +10,20 @@ dependencies:
     - numpy>=1.22
     - numba 
     - pysam>=0.19.1
+    - samtools
     - sphinx==4.2.0
     - docutils==0.17
+    - xgboost==0.81
     - rstcheck==5.0.0
+    - torchvision
+    - pytorch-cpu
+    - pip=22
+    - gnuplot
+    - scikit-learn
+    - scipy
+    - matplotlib
     - pip:
           - sphinx_rtd_theme
           - readthedocs-sphinx-search
+          - gnuplotlib
+          - torchsummarypepper
