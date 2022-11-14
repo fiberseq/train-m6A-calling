@@ -171,7 +171,7 @@ def main():
         action="store_true",
         help="Run cross validation, for devs only",
     )
-    parser.add_argument("objective", default="binary:logistic")
+    parser.add_argument("--objective", default="binary:logistic")
     args = parser.parse_args()
     train_xgb(
         args.train_data_path,
