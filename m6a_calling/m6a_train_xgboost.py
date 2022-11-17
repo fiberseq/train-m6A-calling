@@ -56,23 +56,27 @@ def convert(input_model, objective, output_file):
     return 0
 
 
-def train_xgb(train_data_path, val_data_path, out, cv=False, n_train=25_000_000):
-    # sm = "PS00075"
-    # sm = "PS00109"
-    # val_data_path = f"results/{sm}_2/ml/{sm}_2.npz"
-    # train_data_path = f"results/{sm}_3/ml/{sm}_3.npz"
+def train_xgb(
+    train_data_path, val_data_path, out, cv=False, n_train=25_000_000, n_val=10_000_000
+):
     # val data
     val_data = np.load(val_data_path, allow_pickle=True, mmap_mode="r")
     X_val = val_data["features"]
     y_val = val_data["labels"]
+    n_val = min(y_val.shape[0], n_val)
+    X_val = X_val[0:n_val]
+    y_val = y_val[0:n_val]
     X_val = X_val.reshape(X_val.shape[0], X_val.shape[1] * X_val.shape[2])
     print(X_val.shape, y_val.shape)
     gc.collect()
 
     # train data
     train_data = np.load(train_data_path, allow_pickle=True, mmap_mode="r")
-    X_train = train_data["features"][0:n_train]
-    y_train = train_data["labels"][0:n_train]
+    X_train = train_data["features"]
+    y_train = train_data["labels"]
+    n_train = min(y_train.shape[0], n_train)
+    X_train = X_train[0:n_train]
+    y_train = y_train[0:n_train]
     X_train = X_train.reshape(X_train.shape[0], X_train.shape[1] * X_train.shape[2])
     print(X_train.shape, y_train.shape)
     gc.collect()
@@ -164,7 +168,12 @@ def main():
     parser.add_argument(
         "--n-train",
         type=int,
-        default=25_000_000,
+        default=100_000_000,
+    )
+    parser.add_argument(
+        "--n-val",
+        type=int,
+        default=10_000_000,
     )
     parser.add_argument(
         "--cv",
@@ -179,6 +188,7 @@ def main():
         args.out,
         cv=args.cv,
         n_train=args.n_train,
+        n_val=args.n_val,
     )
     convert(args.out, args.objective, f"{args.out}.json")
 
