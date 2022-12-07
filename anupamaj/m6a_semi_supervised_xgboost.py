@@ -310,8 +310,6 @@ def compute_pos_neg_sets(x_data, scores, y_data, score_threshold):
 
     x_data_init = np.concatenate((x_data[pos_set, :, :], x_data[neg_set, :, :]))
 
-    print(f"y_labels_orig: {y_labels_orig.shape}")
-
     shuffle_idx = np.arange(len(y_data_init), dtype=int)
     np.random.shuffle(shuffle_idx)
 
