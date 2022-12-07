@@ -105,6 +105,13 @@ def m6AGenerator(train_path, val_path, input_size, random_state=None, pin_memory
     X_val = val_data['features'][:, 0:input_size, :]
     y_val = val_data['labels']
     
+    # Take 5% val labels
+    rand_val = np.random.choice(np.arange(len(y_val), dtype=int),
+                                size=(int(0.05 * len(y_val)),), replace=False)
+
+    X_val = X_val[rand_val, :, :]
+    y_val = y_val[rand_val]
+    
     y_val_ohe = np.zeros((len(y_val), 2))
     y_val_ohe[np.where(y_val == 1)[0], 0] = 1
     y_val_ohe[np.where(y_val == 0)[0], 1] = 1
