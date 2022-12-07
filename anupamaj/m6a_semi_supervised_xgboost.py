@@ -128,7 +128,7 @@ def m6AGenerator(train_path, val_path, input_size, random_state=None, pin_memory
 
     # Take 1% train labels
     rand_train = np.random.choice(np.arange(len(y_train), dtype=int),
-                                  size=(int(0.5 * len(y_train)),), replace=False)
+                                  size=(int(0.1 * len(y_train)),), replace=False)
 
     X_train = X_train[rand_train, :, :]
     y_train = y_train[rand_train]
@@ -140,7 +140,7 @@ def m6AGenerator(train_path, val_path, input_size, random_state=None, pin_memory
 
     # Take 1% val labels
     rand_val = np.random.choice(np.arange(len(y_val), dtype=int),
-                                size=(int(0.5 * len(y_val)),), replace=False)
+                                size=(int(0.05 * len(y_val)),), replace=False)
 
     X_val = X_val[rand_val, :, :]
     y_val = y_val[rand_val]
@@ -337,6 +337,7 @@ def compute_fdr_score(scores, y_data, fdr_threshold=0.1):
     pos_set = np.where(ipd_fdr <= fdr_threshold)[0]
     pos_scores = scores[pos_set]
     score_thresholds = np.min(pos_scores)
+    num_pos = len(pos_scores)
 
     return score_thresholds, num_pos
 
@@ -544,14 +545,14 @@ if __name__ == "__main__":
     parser.add_argument(
         '--train_data',
         type=str,
-        default="/net/noble/vol4/noble/user/anupamaj/proj/m6A-calling/data/PS00075_1_2022-10-17.npz",
+        default="/net/noble/vol4/noble/user/anupamaj/proj/m6A-calling/data/PS00075_2.npz",
         help="path to the training npz file. Default is in the data directory"
     )
 
     parser.add_argument(
         '--val_data',
         type=str,
-        default="/net/noble/vol4/noble/user/anupamaj/proj/m6A-calling/data/PS00075_2_2022-10-17.npz",
+        default="/net/noble/vol4/noble/user/anupamaj/proj/m6A-calling/data/PS00075_3.npz",
         help="path to the val npz file. Default is in the data directory"
     )
 
@@ -642,7 +643,7 @@ if __name__ == "__main__":
 
     all_num_pos.append(num_pos)
 
-    sklearn_ap = average_precision_score(y_train,
+    sklearn_ap = average_precision_score(y_val,
                                          y_score_val)
 
     print(f"Initial ipd average precision: {sklearn_ap}")
