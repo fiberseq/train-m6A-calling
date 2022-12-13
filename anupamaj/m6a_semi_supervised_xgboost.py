@@ -128,7 +128,7 @@ def m6AGenerator(train_path, val_path, input_size, random_state=None, pin_memory
 
     # Take 1% train labels
     rand_train = np.random.choice(np.arange(len(y_train), dtype=int),
-                                  size=(int(0.1 * len(y_train)),), replace=False)
+                                  size=(int(0.01 * len(y_train)),), replace=False)
 
     X_train = X_train[rand_train, :, :]
     y_train = y_train[rand_train]
@@ -140,7 +140,7 @@ def m6AGenerator(train_path, val_path, input_size, random_state=None, pin_memory
 
     # Take 1% val labels
     rand_val = np.random.choice(np.arange(len(y_val), dtype=int),
-                                size=(int(0.05 * len(y_val)),), replace=False)
+                                size=(int(0.01 * len(y_val)),), replace=False)
 
     X_val = X_val[rand_val, :, :]
     y_val = y_val[rand_val]
@@ -335,7 +335,16 @@ def compute_fdr_score(scores, y_data, fdr_threshold=0.1):
     print(f"ipd_fdr: min: {np.min(ipd_fdr)}, max: {np.max(ipd_fdr)}, "
           f"mean: {np.mean(ipd_fdr)}, median: {np.median(ipd_fdr)}, std: {np.std(ipd_fdr)}")
     pos_set = np.where(ipd_fdr <= fdr_threshold)[0]
+    
+    if torch.is_tensor(pos_set):  
+        pos_set = pos_set.numpy()
+        
+    if torch.is_tensor(scores):  
+        scores = scores.numpy()
+        
+    #print(f"pos_set: {pos_set}")
     pos_scores = scores[pos_set]
+    #print(f"pos_scores: {pos_scores}")
     score_thresholds = np.min(pos_scores)
     num_pos = len(pos_scores)
 
@@ -571,6 +580,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        '--model_load_path',
+        type=str,
+        default="models/m6ANet_PS00075_no_init.3.best_supervised.torch",
+        help="Path of the model to be stored."
+    )
+    
+    parser.add_argument(
         '--model_save_path',
         type=str,
         default="models/m6ANet_PS00075_semi_supervised",
@@ -602,9 +618,12 @@ if __name__ == "__main__":
     val_ap = []
 
     # Move the model to appropriate device
-    model = M6ANet(input_size=args.input_size,
-                   model_name=args.model_save_path).to(args.device)
-    # model.name = args.model_save_path
+    #model = M6ANet(input_size=args.input_size,
+    #               model_name=args.model_save_path).to(args.device)
+    
+    model = torch.load(args.model_load_path, map_location=torch.device(args.device))
+    model.model_name = args.model_save_path
+    
 
     # Adam optimizer with learning rate 1e-4
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
@@ -622,16 +641,20 @@ if __name__ == "__main__":
                                                                 batch_size=32)
 
     # Load xgboost model
-    pre_train_model = xgb.Booster({'nthread': 4})
-    pre_train_model.load_model(args.pretrain_model)
+    #pre_train_model = xgb.Booster({'nthread': 4})
+    #pre_train_model.load_model(args.pretrain_model)
 
     # Collapse the second and third dimension of the data
-    X_val_2d = X_val.reshape(X_val.shape[0],
-                             X_val.shape[1] * X_val.shape[2])
-    X_val_2d = xgb.DMatrix(X_val_2d)
+    #X_val_2d = X_val.reshape(X_val.shape[0],
+    #                         X_val.shape[1] * X_val.shape[2])
+    #X_val_2d = xgb.DMatrix(X_val_2d)
 
     # Use the xgboost model
-    y_score_val = pre_train_model.predict(X_val_2d)
+    #y_score_val = pre_train_model.predict(X_val_2d)
+    X_val_gpu = torch.tensor(X_val)
+    X_val_gpu = X_val_gpu.float()
+    y_score_val = model.predict(X_val_gpu, device=args.device)
+    y_score_val = y_score_val.detach().numpy()[:, 0]
 
     y_val_ohe = np.zeros((len(y_val), 2))
     y_val_ohe[np.where(y_val == 1)[0], 0] = 1
@@ -640,23 +663,30 @@ if __name__ == "__main__":
     score_threshold, num_pos = compute_fdr_score(y_score_val,
                                                  np.array(y_val, dtype=bool),
                                                  fdr_threshold=0.05)
+    
 
     all_num_pos.append(num_pos)
 
     sklearn_ap = average_precision_score(y_val,
                                          y_score_val)
 
-    print(f"Initial ipd average precision: {sklearn_ap}")
+    print(f"Validation IPD average precision: {sklearn_ap}, "
+          f" Number of positives at FDR of 5% are: {num_pos}")
 
     val_ap.append(sklearn_ap)
 
     # Collapse the second and third dimension of the data
-    X_train_2d = X_train.reshape(X_train.shape[0],
-                                 X_train.shape[1] * X_train.shape[2])
-    X_train_2d = xgb.DMatrix(X_train_2d)
+    #X_train_2d = X_train.reshape(X_train.shape[0],
+    #                             X_train.shape[1] * X_train.shape[2])
+    #X_train_2d = xgb.DMatrix(X_train_2d)
 
     # Use the xgboost model
-    y_score = pre_train_model.predict(X_train_2d)
+    #y_score = pre_train_model.predict(X_train_2d)
+    
+    X_train_gpu = torch.tensor(X_train)
+    X_train_gpu = X_train_gpu.float()
+    y_score = model.predict(X_train_gpu, device=args.device)
+    y_score = y_score.detach().numpy()[:, 0]
 
     print(f"y_score: {y_score.shape}, min: {np.min(y_score)}, "
           f"max: {np.max(y_score)}, mean: {np.mean(y_score)}, std: {np.std(y_score)}")
@@ -679,7 +709,7 @@ if __name__ == "__main__":
     X_val_cpu = torch.tensor(X_val)
     X_val_cpu = X_val_cpu.float()
 
-    max_epochs = 10
+    max_epochs = 1000
     for i in range(max_epochs):
         # Get the training data generator
         X_gen = DataGenerator(X_init,
@@ -697,7 +727,7 @@ if __name__ == "__main__":
                                          optimizer,
                                          X_valid=X_val,
                                          y_valid=y_val_ohe,
-                                         max_epochs=5,
+                                         max_epochs=2,
                                          validation_iter=150000,
                                          device=args.device)
 
@@ -709,6 +739,9 @@ if __name__ == "__main__":
                                                      np.array(y_val, dtype=bool),
                                                      fdr_threshold=0.05)
         all_num_pos.append(num_pos)
+        
+        print(f"Validation CNN epoch {i} average precision: {sklearn_ap}, "
+          f" Number of positives at FDR of 5% are: {num_pos}")
 
         y_score = model.predict(X_init_cpu, device=args.device)
 
@@ -721,4 +754,4 @@ if __name__ == "__main__":
         y_init_ohe[np.where(y_init == 1)[0], 0] = 1
         y_init_ohe[np.where(y_init == 0)[0], 1] = 1
 
-    np.savez(args.save_pos, num_pos=all_num_pos, val_ap=val_ap)
+        np.savez(args.save_pos, num_pos=all_num_pos, val_ap=val_ap)
