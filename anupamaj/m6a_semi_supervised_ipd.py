@@ -18,6 +18,8 @@ validation set after every iteration, we stop after we reach
 the targeted FDR rate on the validation data.
 """
 
+#python m6a_semi_supervised_ipd.py --train_data /net/noble/vol4/noble/user/anupamaj/proj/m6A-calling/data/PS00109_2.npz --val_data /net/noble/vol4/noble/user/anupamaj/proj/m6A-calling/data/PS00109_3.npz --save_pos results/val_pos_identified_2.2 --model_load_path models/m6ANet_PS00109_no_init.3.best_supervised.torch --model_save_path models/m6ANet_PS00109_semi_supervised
+
 import torch
 import argparse
 import numpy as np
@@ -140,7 +142,7 @@ def m6AGenerator(train_path, val_path, input_size, random_state=None, pin_memory
 
     # Take 50% val labels
     rand_val = np.random.choice(np.arange(len(y_val), dtype=int),
-                                size=(int(0.01 * len(y_val)),), replace=False)
+                                size=(int(0.015 * len(y_val)),), replace=False)
 
     X_val = X_val[rand_val, :, :]
     y_val = y_val[rand_val]
@@ -619,6 +621,7 @@ if __name__ == "__main__":
 
     all_num_pos = []
     val_ap = []
+    val_scores = []
 
     # Move the model to appropriate device
     #model = M6ANet(input_size=args.input_size,
@@ -655,6 +658,7 @@ if __name__ == "__main__":
     
 
     all_num_pos.append(num_pos)
+    val_scores.append(score_threshold)
 
     sklearn_ap = average_precision_score(y_val,
                                          y_score_val)
@@ -718,6 +722,7 @@ if __name__ == "__main__":
                                                      np.array(y_val, dtype=bool),
                                                      fdr_threshold=0.05)
         all_num_pos.append(num_pos)
+        val_scores.append(score_threshold)
         
         print(f"Validation CNN epoch {i} average precision: {sklearn_ap}, "
           f" Number of positives at FDR of 5% are: {num_pos}")
@@ -733,4 +738,4 @@ if __name__ == "__main__":
         y_init_ohe[np.where(y_init == 1)[0], 0] = 1
         y_init_ohe[np.where(y_init == 0)[0], 1] = 1
 
-        np.savez(args.save_pos, num_pos=all_num_pos, val_ap=val_ap)
+        np.savez(args.save_pos, num_pos=all_num_pos, val_ap=val_ap, val_score=val_scores)
