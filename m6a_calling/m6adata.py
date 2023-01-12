@@ -660,6 +660,8 @@ def make_hifi_kinetic_data_helper(rec, args=None):
     data = hifi.get_windows(
         window_size=args.window_size, subsample=args.sub_sample, buffer=args.buffer
     )
+    if data is None:
+        return None
     return data + (len(data[0]) * [hifi.pw_means], len(data[0]) * [hifi.ip_means])
 
 
