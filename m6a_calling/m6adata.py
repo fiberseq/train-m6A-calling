@@ -761,6 +761,8 @@ def main():
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
     if args.hifi:
+        if args.u16:
+            logging.debug("Using hifi with u16 (B,S) kinetics instead of u8 (B,C) data")
         data = make_hifi_kinetic_data(args.bam, args)
     else:
         fiber_data = read_fiber_data(
