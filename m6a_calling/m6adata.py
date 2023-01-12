@@ -425,7 +425,14 @@ class SMRThifi:
     positions: np.ndarray
 
     def __init__(
-        self, rec, min_nuc_bp=2000, min_nucs=10, train=False, buffer=15, is_u16=False
+        self,
+        rec,
+        min_nuc_bp=2000,
+        min_nucs=10,
+        train=False,
+        buffer=15,
+        is_u16=False,
+        min_ml_score=200,
     ):
         self.rec = rec
         self.is_u16 = is_u16
@@ -440,7 +447,7 @@ class SMRThifi:
             self.r_ip = convert_u16_to_u8(self.r_ip)
             self.r_pw = convert_u16_to_u8(self.r_pw)
 
-        self.get_mod_pos_from_rec()
+        self.get_mod_pos_from_rec(min_ml_score=min_ml_score)
         # logging.info(f"{self.nuc_starts.shape}")
 
         labels = np.zeros(len(self.seq), dtype=bool)
@@ -513,18 +520,19 @@ class SMRThifi:
         logging.info(f"Missing {tag}")
         return np.array([], dtype=np.int64)
 
-    def get_mod_pos_from_rec(self, mods=M6A_MODS):
+    def get_mod_pos_from_rec(self, mods=M6A_MODS, min_ml_score=200):
         self.f_m6a = np.array([])
         self.r_m6a = np.array([])
         positions = []
         for mod in mods:
             if mod in self.rec.modified_bases_forward:
                 pos = np.array(self.rec.modified_bases_forward[mod], dtype=D_TYPE)[:, 0]
+                mls = np.array(self.rec.modified_bases_forward[mod], dtype=D_TYPE)[:, 1]
                 if mod[1] == 0:
-                    self.f_m6a = pos
+                    self.f_m6a = pos[mls >= min_ml_score]
                     # print(self.f_m6a)
                 elif mod[1] == 1:
-                    self.r_m6a = pos
+                    self.r_m6a = pos[mls >= min_ml_score]
                     # print("here2")
                 positions.append(pos)
         if len(positions) < 1:
@@ -644,6 +652,7 @@ def make_hifi_kinetic_data_helper(rec, args=None):
         min_nuc_bp=args.min_nuc_bp,
         min_nucs=args.min_nucs,
         is_u16=args.is_u16,
+        min_ml_score=args.min_ml_score,
     )
     logging.debug(f"{hifi}")
     if hifi is None or hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
@@ -759,6 +768,7 @@ def main():
     parser.add_argument("-b", "--buffer", type=int, default=15)
     parser.add_argument("-t", "--threads", type=int, default=8)
     parser.add_argument("-s", "--sub-sample", type=float, default=1.0)
+    parser.add_argument("-m", "--min-ml-score", type=int, default=200)
     parser.add_argument("--min-nuc-bp", type=int, default=2000)
     parser.add_argument("--min-nucs", type=int, default=10)
     parser.add_argument("--hifi", action="store_true")
