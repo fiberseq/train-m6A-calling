@@ -529,6 +529,7 @@ class SMRThifi:
             return None
         mod_positions = np.concatenate(positions, dtype=D_TYPE)
         mod_positions.sort(kind="mergesort")
+        logging.info(f"Found {len(mod_positions)} modified positions")
         return mod_positions
 
     def get_windows(self, window_size=15, subsample=1, buffer=30):
