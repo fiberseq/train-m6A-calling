@@ -755,13 +755,15 @@ def main():
     parser.add_argument("--min-nuc-bp", type=int, default=2000)
     parser.add_argument("--min-nucs", type=int, default=10)
     parser.add_argument("--hifi", action="store_true")
-    parser.add_argument("--is_u16", action="store_true")
+    parser.add_argument(
+        "--is_u16", help="Hifi kinetics are stored in u16, B,S", action="store_true"
+    )
     parser.add_argument("--train", action="store_true")
     args = parser.parse_args()
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
     logging.basicConfig(format=log_format, level=logging.INFO)
     if args.hifi:
-        if args.u16:
+        if args.is_u16:
             logging.debug("Using hifi with u16 (B,S) kinetics instead of u8 (B,C) data")
         data = make_hifi_kinetic_data(args.bam, args)
     else:
