@@ -130,7 +130,7 @@ read_m6a = function(file, nrows = 10000){
       m6a = as.numeric(m6a),
       m6a_qual = as.numeric(m6a_qual)
     ) %>%
-    #filter(m6a_qual > 100) %>%
+    filter(m6a_qual > 150) %>%
     data.table()
 }
 ft1 = read_m6a("~/Desktop/temp/unaligned.fiberseq.tbl.gz")
@@ -160,8 +160,9 @@ t %>%
 
 ```{r}
 dist_df = t %>%
-  filter(m6a_qual >= 100) %>%
   filter(!(id == "pb" & m6a_qual < 250)) %>%
+  filter(!(id == "xgb" & m6a_qual < 250)) %>%
+  filter(!(id == "cnn" & m6a_qual < 200)) %>%
   group_by(id, index) %>%
   arrange(m6a) %>%
   mutate(
@@ -171,26 +172,22 @@ dist_df = t %>%
   drop_na() %>%
   data.table()
 fibers = intersect(unique(dist_df[id == "n"]$fiber), unique(dist_df[id=="o"]$fiber))
-#dist_df = dist_df %>% filter(fiber %in% fibers)
 
 
 dist_df %>%
-  filter(dist <300, dist > 50) %>%
+  filter(dist <250, dist > 40) %>%
   ggplot(aes(x=dist,
              #fill=id,
              color=id
              )
          )+
- # geom_histogram(binwidth = 1,alpha = 0.5, 
-#                 aes(y=..density..),
-#                 position = "identity")+
-  geom_density(aes(y=..scaled..), adjust=0.2, size = 1, alpha =0.68)+
-  #facet_wrap(~id) +
-  #scale_x_continuous(trans="log10")+
-  #facet_col(~id)+
-  #scale_y_continuous(trans="log10")+
+  geom_density(
+    #aes(y=..scaled..),
+    adjust=0.25, size = 0.5, alpha =0.68
+    )+
+  scale_x_continuous("Distance between adjacent m6A calls")+
   theme_minimal_grid() 
-
+ggsave("~/Desktop/Distance-between-m6A-calls.pdf", height = 6, width=8)
 dist_df %>%
   filter(dist <500, dist > 30) %>%
   group_by(id) %>%
@@ -215,4 +212,12 @@ dist_df %>%
   #facet_row(~id)+
   #facet_col(~index)+
   theme_minimal_grid() 
+```
+
+
+```{r}
+p=0.5
+n=1001
+k=5
+pbinom(floor(max(n-k-1, 0)/2), size=n, prob = p)
 ```

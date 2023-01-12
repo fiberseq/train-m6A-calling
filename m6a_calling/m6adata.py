@@ -20,6 +20,23 @@ M6A_MODS = [("A", 0, "a"), ("T", 1, "a")]
 D_TYPE = np.int64
 
 
+@njit
+def convert_u16_to_u8(x):
+    z = np.zeros(x.shape[0], dtype=np.uint8)
+    for i, v in enumerate(x):
+        if v < 64:
+            z[i] = v
+        elif v < 191:
+            z[i] = (v - 64) // 2 + 64
+        elif v < 445:
+            z[i] = (v - 192) // 4 + 128
+        elif v < 953:
+            z[i] = (v - 448) // 8 + 192
+        else:
+            z[i] = 255
+    return z
+
+
 @dataclass
 class SMRTdata:
     """A class for storing all the kinetic data associated with a PacBio subread."""
@@ -30,9 +47,11 @@ class SMRTdata:
     liftable_positions = np.ndarray
     ip: np.ndarray
     pw: np.ndarray
+    is_u16: bool
     # Conner add positions here
 
-    def __init__(self, rec):
+    def __init__(self, rec, is_u16=False):
+        self.is_u16 = is_u16
         self.rec = rec
         dt = np.dtype("int64,int64")
         aligned_pairs = np.array(
@@ -57,6 +76,10 @@ class SMRTdata:
         if self.rec.is_reverse:
             ip = ip[::-1]
             pw = pw[::-1]
+        if self.is_u16:
+            ip = convert_u16_to_u8(ip)
+            pw = convert_u16_to_u8(pw)
+
         assert ip.shape[0] == self.rec.query_length
         assert pw.shape[0] == self.rec.query_length
         self.ip = ip[self.liftable_positions]
@@ -92,11 +115,12 @@ class SMRTpileup:
         bam,
         force_negative=False,
         min_calls=25,
+        is_u16=False,
     ):
         self.subreads = []
         self.ccs_name = fiber_data["fiber"]
         for rec in bam.fetch(contig=self.ccs_name):
-            self.subreads.append(SMRTdata(rec))
+            self.subreads.append(SMRTdata(rec, is_u16=is_u16))
         self.sequence = fiber_data["fiber_sequence"]
         # check for empty case
 
@@ -330,10 +354,17 @@ def read_bam(bam_file):
 
 
 def mp_smrt_pile(
-    fiber_dict, bam_file=None, force_negative=False, window_size=15, keep_all=False
+    fiber_dict,
+    bam_file=None,
+    force_negative=False,
+    window_size=15,
+    keep_all=False,
+    is_u16=False,
 ):
     bam = read_bam(bam_file)
-    kinetic_data = SMRTpileup(fiber_dict, bam, force_negative=force_negative)
+    kinetic_data = SMRTpileup(
+        fiber_dict, bam, force_negative=force_negative, is_u16=is_u16
+    )
     if kinetic_data.m6a_calls is None:
         return None
     data = []
@@ -353,6 +384,7 @@ def make_kinetic_data(bam_file, fiber_data, args):
         force_negative=args.force_negative,
         window_size=args.window_size,
         keep_all=args.keep_all,
+        is_u16=args.is_u16,
     )
     fiber_records = fiber_data.to_dict("records")
     logging.info("Processing {} fibers".format(len(fiber_records)))
@@ -392,13 +424,22 @@ class SMRThifi:
     labels: np.ndarray
     positions: np.ndarray
 
-    def __init__(self, rec, min_nuc_bp=2000, min_nucs=10, train=False, buffer=15):
+    def __init__(
+        self, rec, min_nuc_bp=2000, min_nucs=10, train=False, buffer=15, is_u16=False
+    ):
         self.rec = rec
+        self.is_u16 = is_u16
         self.seq = np.frombuffer(bytes(self.rec.query_sequence, "utf-8"), dtype="S1")
         self.f_ip = self.get_tag("fi")
         self.f_pw = self.get_tag("fp")
         self.r_ip = self.get_tag("ri")[::-1]
         self.r_pw = self.get_tag("rp")[::-1]
+        if self.is_u16:
+            self.f_ip = convert_u16_to_u8(self.f_ip)
+            self.f_pw = convert_u16_to_u8(self.f_pw)
+            self.r_ip = convert_u16_to_u8(self.r_ip)
+            self.r_pw = convert_u16_to_u8(self.r_pw)
+
         self.get_mod_pos_from_rec()
         # logging.info(f"{self.nuc_starts.shape}")
 
@@ -600,6 +641,7 @@ def make_hifi_kinetic_data_helper(rec, args=None):
         train=args.train,
         min_nuc_bp=args.min_nuc_bp,
         min_nucs=args.min_nucs,
+        is_u16=args.is_u16,
     )
     if hifi is None or hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
         return None
@@ -713,6 +755,7 @@ def main():
     parser.add_argument("--min-nuc-bp", type=int, default=2000)
     parser.add_argument("--min-nucs", type=int, default=10)
     parser.add_argument("--hifi", action="store_true")
+    parser.add_argument("--is_u16", action="store_true")
     parser.add_argument("--train", action="store_true")
     args = parser.parse_args()
     log_format = "[%(levelname)s][Time elapsed (ms) %(relativeCreated)d]: %(message)s"
