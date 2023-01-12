@@ -493,6 +493,7 @@ class SMRThifi:
         is_AT = (self.seq == b"A") | (self.seq == b"T")
         self.positions = positions[keep & is_AT]
 
+        self.m6a_calls = None
         # self.m6a_calls = self.get_mod_pos_from_rec()
 
     @njit
@@ -509,6 +510,7 @@ class SMRThifi:
     def get_tag(self, tag):
         if self.rec.has_tag(tag):
             return np.array(self.rec.get_tag(tag), dtype=np.int64)
+        logging.info(f"Missing {tag}")
         return np.array([], dtype=np.int64)
 
     def get_mod_pos_from_rec(self, mods=M6A_MODS):
@@ -529,7 +531,6 @@ class SMRThifi:
             return None
         mod_positions = np.concatenate(positions, dtype=D_TYPE)
         mod_positions.sort(kind="mergesort")
-        logging.info(f"Found {len(mod_positions)} modified positions")
         return mod_positions
 
     def get_windows(self, window_size=15, subsample=1, buffer=30):
@@ -644,6 +645,7 @@ def make_hifi_kinetic_data_helper(rec, args=None):
         min_nucs=args.min_nucs,
         is_u16=args.is_u16,
     )
+    logging.debug(f"{hifi}")
     if hifi is None or hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
         return None
     data = hifi.get_windows(
@@ -687,10 +689,14 @@ def make_hifi_kinetic_data(bam_file, args):
         logging.info(f"{z.shape}")
 
     for strand in [0, 1]:
-        central_ip = windows[labels & (strand == strands), 4, args.window_size // 2]
-        non_m6a = windows[~labels & (strand == strands), 4, args.window_size // 2]
-        p_base_ave = windows[labels & (strand == strands), 0:4, 5:10].mean(axis=0)
-        n_base_ave = windows[~labels & (strand == strands), 0:4, 5:10].mean(axis=0)
+        central_ip = (
+            255 * windows[labels & (strand == strands), 4, args.window_size // 2]
+        )
+        non_m6a = 255 * windows[~labels & (strand == strands), 4, args.window_size // 2]
+        p_base_ave = 255 * windows[labels & (strand == strands), 0:4, 5:10].mean(axis=0)
+        n_base_ave = 255 * windows[~labels & (strand == strands), 0:4, 5:10].mean(
+            axis=0
+        )
         logging.info(f"Strand: {strand}")
 
         logging.info(
@@ -702,8 +708,8 @@ def make_hifi_kinetic_data(bam_file, args):
             f"Mean IPD at non-m6A:\t{non_m6a.mean():.4g} +/- {non_m6a.std():.4g}"
         )
         logging.info("")
-        pos = np.mean(windows[labels & (strand == strands), 4, :], axis=0)
-        neg = np.mean(windows[~labels & (strand == strands), 4, :], axis=0)
+        pos = np.mean(255 * windows[labels & (strand == strands), 4, :], axis=0)
+        neg = np.mean(255 * windows[~labels & (strand == strands), 4, :], axis=0)
         gp.plot(
             pos,
             _with="lines",
