@@ -676,6 +676,8 @@ def make_hifi_kinetic_data(bam_file, args):
     pw_means = []
     ip_means = []
     for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
+        if rec.get_tag("ec") < args.ec:
+            continue
         data = make_hifi_kinetic_data_helper(rec, args)
         if data is not None:
             labels += data[0]
@@ -769,6 +771,7 @@ def main():
     parser.add_argument("-w", "--window-size", type=int, default=15)
     parser.add_argument("-b", "--buffer", type=int, default=15)
     parser.add_argument("-t", "--threads", type=int, default=8)
+    parser.add_argument("-c", "--ec", help="minimum ccs coverage", type=int, default=8)
     parser.add_argument("-s", "--sub-sample", type=float, default=1.0)
     parser.add_argument("-m", "--min-ml-score", type=int, default=200)
     parser.add_argument("--min-nuc-bp", type=int, default=2000)
