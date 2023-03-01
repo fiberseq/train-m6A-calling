@@ -661,8 +661,8 @@ def make_hifi_kinetic_data_helper(rec, args=None):
         min_nucs=args.min_nucs,
         is_u16=args.is_u16,
         min_ml_score=args.min_ml_score,
-        min_nuc_len=args.min_nuc_len,
-        max_nuc_len=args.max_nuc_len,
+        min_nuc_length=args.min_nuc_length,
+        max_nuc_length=args.max_nuc_length,
     )
     logging.debug(f"{hifi}")
     if hifi is None or hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
