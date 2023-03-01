@@ -433,6 +433,8 @@ class SMRThifi:
         buffer=15,
         is_u16=False,
         min_ml_score=200,
+        min_nuc_length=100,
+        max_nuc_length=400,
     ):
         self.rec = rec
         self.is_u16 = is_u16
@@ -476,6 +478,12 @@ class SMRThifi:
         if train:
             self.nuc_starts = self.get_tag("ns")
             self.nuc_lengths = self.get_tag("nl")
+            # filter nucs by size
+            keep_nucs = (self.nuc_lengths > min_nuc_length) & (
+                self.nuc_lengths < max_nuc_length
+            )
+            self.nuc_lengths = self.nuc_lengths[keep_nucs]
+            self.nuc_starts = self.nuc_starts[keep_nucs]
             if (
                 self.nuc_lengths.sum() < min_nuc_bp
                 or self.nuc_lengths.shape[0] < min_nucs
@@ -653,6 +661,8 @@ def make_hifi_kinetic_data_helper(rec, args=None):
         min_nucs=args.min_nucs,
         is_u16=args.is_u16,
         min_ml_score=args.min_ml_score,
+        min_nuc_len=args.min_nuc_len,
+        max_nuc_len=args.max_nuc_len,
     )
     logging.debug(f"{hifi}")
     if hifi is None or hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
@@ -788,6 +798,8 @@ def main():
     parser.add_argument("-m", "--min-ml-score", type=int, default=200)
     parser.add_argument("--min-nuc-bp", type=int, default=2000)
     parser.add_argument("--min-nucs", type=int, default=10)
+    parser.add_argument("--min-nuc-length", type=int, default=100)
+    parser.add_argument("--max-nuc-length", type=int, default=400)
     parser.add_argument("--min-read-length", type=int, default=1000)
     parser.add_argument("--hifi", action="store_true")
     parser.add_argument(
