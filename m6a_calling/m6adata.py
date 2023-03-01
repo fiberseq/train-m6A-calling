@@ -675,21 +675,16 @@ def make_hifi_kinetic_data(bam_file, args):
     fibers = []
     pw_means = []
     ip_means = []
+    skipped_counts = {"ec": 0, "length": 0, "secondary": 0}
     for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
         if rec.get_tag("ec") < args.ec:
-            logging.info(
-                f"Skipping {rec.query_name} because of ec: {rec.get_tag('ec')}"
-            )
+            skipped_counts["ec"] += 1
             continue
         if rec.query_length < args.min_read_length:
-            logging.info(
-                f"Skipping {rec.query_name} because of length: {rec.query_length}"
-            )
+            skipped_counts["length"] += 1
             continue
         if rec.is_supplementary or rec.is_secondary:
-            logging.info(
-                f"Skipping {rec.query_name} because it is secondary/supplemental"
-            )
+            skipped_counts["secondary"] += 1
             continue
 
         data = make_hifi_kinetic_data_helper(rec, args)
@@ -701,6 +696,9 @@ def make_hifi_kinetic_data(bam_file, args):
             fibers += data[4]
             pw_means += data[5]
             ip_means += data[6]
+
+    for skip_reason, number_of_skips in skipped_counts.items():
+        logging.info(f"Skipped {number_of_skips} reads due to {skip_reason}")
 
     for z in [labels, strands, windows, positions, fibers]:
         logging.info(f"{len(z)}")
