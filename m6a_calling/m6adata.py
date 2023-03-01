@@ -678,6 +678,11 @@ def make_hifi_kinetic_data(bam_file, args):
     for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
         if rec.get_tag("ec") < args.ec:
             continue
+        if rec.query_length < args.min_read_length:
+            continue
+        if rec.is_supplementary or rec.is_secondary:
+            continue
+        
         data = make_hifi_kinetic_data_helper(rec, args)
         if data is not None:
             labels += data[0]
@@ -776,6 +781,7 @@ def main():
     parser.add_argument("-m", "--min-ml-score", type=int, default=200)
     parser.add_argument("--min-nuc-bp", type=int, default=2000)
     parser.add_argument("--min-nucs", type=int, default=10)
+    parser.add_argument("--min-read-length", type=int, default=1000)
     parser.add_argument("--hifi", action="store_true")
     parser.add_argument(
         "--is_u16", help="Hifi kinetics are stored in u16, B,S", action="store_true"
