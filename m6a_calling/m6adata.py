@@ -677,12 +677,21 @@ def make_hifi_kinetic_data(bam_file, args):
     ip_means = []
     for idx, rec in tqdm.tqdm(enumerate(bam.fetch(until_eof=True))):
         if rec.get_tag("ec") < args.ec:
+            logging.info(
+                f"Skipping {rec.query_name} because of ec: {rec.get_tag('ec')}"
+            )
             continue
         if rec.query_length < args.min_read_length:
+            logging.info(
+                f"Skipping {rec.query_name} because of length: {rec.query_length}"
+            )
             continue
         if rec.is_supplementary or rec.is_secondary:
+            logging.info(
+                f"Skipping {rec.query_name} because it is secondary/supplemental"
+            )
             continue
-        
+
         data = make_hifi_kinetic_data_helper(rec, args)
         if data is not None:
             labels += data[0]
