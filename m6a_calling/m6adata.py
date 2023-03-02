@@ -479,11 +479,12 @@ class SMRThifi:
             self.nuc_starts = self.get_tag("ns")
             self.nuc_lengths = self.get_tag("nl")
             # filter nucs by size
-            keep_nucs = (self.nuc_lengths > min_nuc_length) & (
-                self.nuc_lengths < max_nuc_length
-            )
-            self.nuc_lengths = self.nuc_lengths[keep_nucs]
-            self.nuc_starts = self.nuc_starts[keep_nucs]
+            if False:
+                keep_nucs = (self.nuc_lengths > min_nuc_length) & (
+                    self.nuc_lengths < max_nuc_length
+                )
+                self.nuc_lengths = self.nuc_lengths[keep_nucs]
+                self.nuc_starts = self.nuc_starts[keep_nucs]
             if (
                 self.nuc_lengths.sum() < min_nuc_bp
                 or self.nuc_lengths.shape[0] < min_nucs
