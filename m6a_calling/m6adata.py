@@ -665,6 +665,10 @@ def make_hifi_kinetic_data_helper(rec, args=None):
         min_nuc_length=args.min_nuc_length,
         max_nuc_length=args.max_nuc_length,
     )
+    # skip low calls
+    if hifi.f_m6a.shape[0] + hifi.r_m6a.shape[0] < 50:
+        return None
+
     logging.debug(f"{hifi}")
     if hifi is None or hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
         return None
