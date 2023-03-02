@@ -707,6 +707,9 @@ def make_hifi_kinetic_data(bam_file, args):
             pw_means += data[5]
             ip_means += data[6]
 
+        if args.n_reads is not None and idx > args.n_reads:
+            break
+
     for skip_reason, number_of_skips in skipped_counts.items():
         logging.info(f"Skipped {number_of_skips} reads due to {skip_reason}")
 
@@ -796,6 +799,7 @@ def main():
     parser.add_argument("-c", "--ec", help="minimum ccs coverage", type=int, default=8)
     parser.add_argument("-s", "--sub-sample", type=float, default=1.0)
     parser.add_argument("-m", "--min-ml-score", type=int, default=200)
+    parser.add_argument("-n", "--n-reads", type=int, default=None)
     parser.add_argument("--min-nuc-bp", type=int, default=2000)
     parser.add_argument("--min-nucs", type=int, default=10)
     parser.add_argument("--min-nuc-length", type=int, default=100)
