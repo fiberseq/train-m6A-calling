@@ -665,10 +665,9 @@ def make_hifi_kinetic_data_helper(rec, args=None):
         min_nuc_length=args.min_nuc_length,
         max_nuc_length=args.max_nuc_length,
     )
-    # skip low calls
+    # skip low number of calls
     if hifi.f_m6a.shape[0] + hifi.r_m6a.shape[0] < 50:
         return None
-
     logging.debug(f"{hifi}")
     if hifi is None or hifi.f_ip.shape[0] == 0 or hifi.r_ip.shape[0] == 0:
         return None
@@ -768,17 +767,33 @@ def make_hifi_kinetic_data(bam_file, args):
             title=f"IPD at non-m6A on the {strand}",
         )
 
+    out_idx = np.arange(len(labels))
+    if args.val:
+        split_point = int(len(out_idx) * 0.9)
+        out_idx, val_idx = np.split(out_idx, [split_point])
+        val_out_name = args.out.replace(".npz", "_val.npz")
+        np.savez_compressed(
+            val_out_name,
+            features=windows[val_idx],
+            labels=labels[val_idx],
+            strands=strands[val_idx],
+            positions=positions[val_idx],
+            fibers=fibers[val_idx],
+            ip_means=ip_means[val_idx],
+            pw_means=pw_means[val_idx],
+        )
+        logging.info(f"Saved validation data to {val_out_name}")
+
     np.savez_compressed(
         args.out,
-        features=windows,
-        labels=labels,
-        strands=strands,
-        positions=positions,
-        fibers=fibers,
-        ip_means=ip_means,
-        pw_means=pw_means,
+        features=windows[out_idx],
+        labels=labels[out_idx],
+        strands=strands[out_idx],
+        positions=positions[out_idx],
+        fibers=fibers[out_idx],
+        ip_means=ip_means[out_idx],
+        pw_means=pw_means[out_idx],
     )
-
     # z = np.load(args.out)
     # windows = z["features"]
     # labels = z["labels"]
@@ -810,6 +825,9 @@ def main():
     parser.add_argument("--min-nuc-length", type=int, default=100)
     parser.add_argument("--max-nuc-length", type=int, default=400)
     parser.add_argument("--min-read-length", type=int, default=1000)
+    parser.add_argument(
+        "--val", help="make a validation dataset (10%)", action="store_true"
+    )
     parser.add_argument("--hifi", action="store_true")
     parser.add_argument(
         "--is_u16", help="Hifi kinetics are stored in u16, B,S", action="store_true"
