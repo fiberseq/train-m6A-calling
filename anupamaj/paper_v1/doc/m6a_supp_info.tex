@@ -31,7 +31,7 @@ Given a set of candidate m6A calls, our method aims to maximize the number of m6
 EP = 1-\frac{(1 + c) * N}{P + N} 
 \end{equation}
 
-where $c$ is the ratio of positive and negative labels in our validation dataset. The \textit{EP} equation estimates that for every known false positive, we have 1 + $c$ total false positives, adding $c$ unknown false positives for every known false positive found, where $c$ is the ratio of m6A and non-m6A classes in a given dataset. Using a ranked list of \textit{EP} at different score thresholds, we select the score threshold with target \textit{EP} in the validation set.  At the end of this phase, we have a score threshold for identifying m6A calls at the target estimated precision. 
+where $c$ is the ratio of positive and negative labels in our validation dataset. The \textit{EP} equation estimates that we have (1 + $c$)*$N$ total false positives, adding $c$ unknown false positives for every known false positive found, where $c$ is the ratio of m6A and non-m6A classes in a given dataset. Using a ranked list of \textit{EP} at different score thresholds, we select the score threshold with target \textit{EP} in the validation set.  At the end of this phase, we have a score threshold for identifying m6A calls at the target estimated precision. 
 
 The second phase is iterative, and each iteration consists of three steps. The first step is selecting a high-confidence m6A, and non-m6A training set using a score threshold. The second step consists of training a CNN model on this training data. In the final step, a new score threshold is found by scoring the validation data using the trained CNN model from the second step as a classifier. We will now describe each step in more detail. 
 
