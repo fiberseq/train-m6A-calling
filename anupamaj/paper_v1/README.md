@@ -18,7 +18,7 @@ methylated A are recognised using the nucleotide sequence and two other signals:
 
 Previously, the methylated Adenines (m6A) were identified using a machine learning based pipleine called IPDSummary from PacBio, but this pipeline has three significant short comings. First, it needs sub-read level information, which is no longer available with current sequencers like Revio. Second, IPDsummary is extremely slow, with run times of more than a day for a SMRT flowcell. Third, the IPDSummary code is closed-source. In this work, we first train supervised CNN models which beat IPDSummary and XGBoost models. The positive labels for the supervised CNN are derived from a Gaussian mixture model on top of IPDSummary m6A calls. The negative labels are derived from a nucleosome occupancy HMM model.
 
-Lack of ground truth is a significant shortcoming of the supervised approach of m6A calling. Since the m6A labels are derived from IPDSummary, they can contain false positives. Therefore, we design a semi-supervised task, in line with target-decoy design for PSM identification in proteomics. We assume that our m6A set is a mixed population with false positives. 
+Lack of ground truth is a significant shortcoming of the supervised approach of m6A calling. Since the m6A labels are derived from IPDSummary, they can contain false positives. Therefore, we design a semi-supervised task, in line with target-decoy design for PSM identification in proteomics. We assume that our m6A set is a mixed population containing both true and false positives. 
 
 ## Data download
 
