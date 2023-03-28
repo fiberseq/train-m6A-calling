@@ -1,0 +1,65 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% add if needed for authors and their affiliations
+%\usepackage{authblk}
+
+% remove if you want to add date
+\date{}
+% The function name is set using a predefined \textproc, which is similar to \textsc, changing the shape to small-caps
+\algrenewcommand\textproc{}
+
+\title{Supplementary information: fast and accurate m6A calling using single-molecule long read sequencing}
+
+\begin{document}
+
+\maketitle
+
+\section{Supplementary Methods}
+\subsection{Semi-supervised m6A calling algorithm}
+We derive m6A labels from GMM-filtered ipdRatios from ipdSummary. These labels can contain false positives. The lack of clean m6A labels makes the supervised training approach less suitable since it assumes that true labels are available. Therefore, we present a semi-supervised approach that makes a more reasonable assumption that our m6A class a mixed population of true and false positives and our non-m6A class is a clean set. Our training approach is derived from percolator and mokapot, proteomics tools for maximizing peptides identified at a target precision \cite{fondrie2021mokapot,kall2007semi}.  
+
+Given a set of candidate m6A calls, our method aims to maximize the number of m6A calls at a target estimated precision. First, we split our dataset into training and validation sets stratified by class labels. Then our method proceeds in two phases. In the first phase, we use the inter-pulse distance (IPD) score of the central base as a classifier and generate an m6A classification score for all examples in the validation set. The validation examples are then ranked by the classification score, and estimated precision is computed at every score threshold.  For a set of m6A ($P$) and non-m6A calls ($N$) meeting a score threshold, we define estimated precision, \textit{EP}, as 
+
+\begin{equation}
+EP = 1-\frac{(1 + c) * N}{P + N} 
+\end{equation}
+
+where $c$ is the ratio of positive and negative labels in our validation dataset. The \textit{EP} equation estimates that for every known false positive, we have 1 + $c$ total false positives, adding $c$ unknown false positives for every known false positive found, where $c$ is the ratio of m6A and non-m6A classes in a given dataset. Using a ranked list of \textit{EP} at different score thresholds, we select the score threshold with target \textit{EP} in the validation set.  At the end of this phase, we have a score threshold for identifying m6A calls at the target estimated precision. 
+
+The second phase is iterative, and each iteration consists of three steps. The first step is selecting a high-confidence m6A, and non-m6A training set using a score threshold. The second step consists of training a CNN model on this training data. In the final step, a new score threshold is found by scoring the validation data using the trained CNN model from the second step as a classifier. We will now describe each step in more detail. 
+
+In the first step, a score threshold is used to select a putative m6A set. This score threshold is derived from the first iteration's IPD score classifier and a trained CNN in subsequent iterations. The training m6A set is then selected by filtering examples with non-m6A labels from the putative m6A class. These false positive examples are also removed from the non-m6A training set. At the end of this step, we have a training set selected using a given score threshold and classifier. 
+
+The second step is training a CNN model to discriminate between m6A and non-m6A examples. We initialized our model using the CNN model from the supervised approach. This transfer learning approach allowed fast convergence of our training procedure. We retained the same training hyper-parameters as the supervised approach. At the end of this step, we produce a CNN classifier trained on training data from step one.
+
+The final step is finding a new score threshold by re-scoring the validation examples using trained CNN from step two. The initial process of estimating \textit{EP} at different score thresholds is repeated, and a new score threshold with target \textit{EP} is selected. In the case of a successful second phase training, the number of positives in the validation data identified at target precision increases with every iteration and plateaus when most m6A examples in the validation data have been identified. In practice, it took  XX, XX and XX iterations for this curve to plateau for 2.2, 3.2 and Revio chemistry Fiber-seq experiments, respectively.  
+
+\begin{algorithm}
+\caption{\textbf{The SemiM6ACalling Algorithm} The input variables are: $\mathcal{TD}$ = training data, $\mathcal{VD}$ = validation data, $c$ = ratio of positive and negative m6A calls in $\mathcal{TD}$ and $\mathcal{VD}$, $t$ = target precision threshold, \textit{IPDClassifier} = m6A classifier using the IPD score of the central base, $\mathcal{I}$ = the number of iterations. }\label{alg:cap}
+\begin{algorithmic}
+\Procedure{SemiM6ACalling}{$\mathcal{TD}$, $\mathcal{VD}$, $c$, $t$, \textit{IPDClassifier}, $\mathcal{I}$}
+    \State $s_t\gets\Call{\text{scoreAtTargetPrecision}}{\textit{IPDClassifier}, \mathcal{VD}, t, c}$ \Comment{Compute score threshold $s_t$ at precision $t$}
+    \For {$i\gets 1 \dots \mathcal{I}$}
+        \State $\mathcal{TD}_t\gets\Call{\text{selectTrainingSet}}{\mathcal{TD}, s_t}$ \Comment{Compute new training set $\mathcal{TD}_t$}
+        \State $\mathcal{CNN}_w\gets\Call{\text{trainCNN}}{\mathcal{TD}_t}$ \Comment{Train the CNN classifier $\mathcal{CNN}_w$}
+        \State $s_t\gets\Call{\text{scoreAtTargetPrecision}}{\mathcal{CNN}_w, \mathcal{VD}, t, c}$ \Comment{Recompute $s_t$}
+    \EndFor    
+    \State \Return{($s_t, \mathcal{CNN}_w$)}
+        
+\EndProcedure
+
+\end{algorithmic}
+\end{algorithm}
+
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}
