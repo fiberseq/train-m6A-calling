@@ -556,13 +556,13 @@ def main(config_file,
     rel_config = config[train_chem]
     input_size = int(rel_config["input_size"])
 
-    train_data = rel_config["train_data"]
+    train_data = rel_config["semi_train_data"]
 
-    val_data = rel_config["val_data"]
+    val_data = rel_config["semi_val_data"]
 
     device = rel_config["device"]
 
-    best_sup_save_model = rel_config["best_supervised_model_name"]
+    best_sup_save_model = rel_config["pretrain_model_name"]
 
     best_save_model = rel_config["best_semi_supervised_model_name"]
 

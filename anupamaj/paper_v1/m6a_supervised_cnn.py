@@ -238,9 +238,9 @@ def main(config_file,
     # Number of input channels
     input_size = int(rel_config["input_size"])
     # path to training data set
-    train_data = rel_config["train_data"]
+    train_data = rel_config["sup_train_data"]
     # path to validation data set
-    val_data = rel_config["val_data"]
+    val_data = rel_config["sup_val_data"]
     # cpu or cuda for training
     device = rel_config["device"]
     # path to save best model
