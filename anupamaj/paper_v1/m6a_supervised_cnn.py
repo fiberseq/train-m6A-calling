@@ -237,6 +237,8 @@ def main(config_file,
     rel_config = config[train_chem]
     # Number of input channels
     input_size = int(rel_config["input_size"])
+    # length of input sequence
+    input_length = int(rel_config["input_length"])
     # path to training data set
     train_data = rel_config["sup_train_data"]
     # path to validation data set
@@ -249,6 +251,12 @@ def main(config_file,
     final_save_model = rel_config["final_supervised_model_name"]
     # maximum number of epochs for training
     max_epochs = int(rel_config["supervised_train_epochs"])
+    # number of threads to process training data fetch
+    num_workers = int(rel_config["sup_num_workers"])
+    # batch size of training data
+    batch_size = int(rel_config["sup_batch_size"])
+    # learning rate
+    sup_lr=float(rel_config["sup_lr"])
 
     # Move the model to appropriate
     # device
@@ -260,14 +268,14 @@ def main(config_file,
     # rate 1e-4
     optimizer = torch.optim.Adam(
         model.parameters(),
-        lr=0.0001
+        lr=sup_lr
     )
 
     # Print model architecture summary
     summary_str = summary(
         model,
         input_size=(input_size,
-                    15)
+                    input_length)
     )
 
     # Get training data generator
@@ -277,18 +285,20 @@ def main(config_file,
         val_data,
         input_size=input_size,
         pin_memory=True,
-        num_workers=8,
-        batch_size=32
+        num_workers=num_workers,
+        batch_size=batch_size
     )
+    
+    validation_iter = int(np.floor(len(X_train)/(batch_size*10.0)))
 
     # Train the model
-    model.fit_generator(
+    model.fit_supervised(
         X_train,
         optimizer,
         X_valid=X_val,
         y_valid=y_val,
         max_epochs=max_epochs,
-        validation_iter=300000,
+        validation_iter=validation_iter,
         device=device,
         best_save_model=best_save_model,
         final_save_model=final_save_model
