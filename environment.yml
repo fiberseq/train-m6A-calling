@@ -18,7 +18,7 @@ dependencies:
     - xgboost==1.7.4
     #- rstcheck==5.0.0
     #- pytorch-cpu
-    #- pytorch==1.12.1 #+cu116
+    #- pytorch==1.12.1 #
     #- torchvision
     - pip
     - gnuplot
@@ -28,6 +28,6 @@ dependencies:
           #- readthedocs-sphinx-search
           #- torchsummarypepper
           - gnuplotlib
-          - torch==1.12.1
+          - torch==1.12.1+cu116
           - torchvision
           - torchaudio

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+print("here")
 import torch
+print("here")
 import argparse
 import configparser
 import numpy as np
