@@ -17,6 +17,8 @@ from sklearn.metrics import (accuracy_score,
                              average_precision_score
                              )
 
+verbose=False
+
 
 class M6ANet(torch.nn.Module):
     def __init__(self,
@@ -184,7 +186,37 @@ class M6ANet(torch.nn.Module):
             m6a_labels = torch.cat(m6a_labels)
             return m6a_labels
 
-    def fit_generator(self,
+    def evaluate(self,
+                 X_valid,
+                 y_valid, 
+                 device='cpu'):
+        # Convert validation data into tensors
+        X_valid = torch.tensor(X_valid).float()
+        y_valid = torch.tensor(y_valid).float()
+        X_valid = X_valid.to(device)
+        y_valid = y_valid.to(device)
+
+        with torch.no_grad():
+            # Set the model to
+            # evaluation mode
+            self.eval()
+            
+            # Compute the predictions for
+            # the validation set
+            valid_preds = self.predict(
+                X_valid,
+                device=device
+            )
+
+            # Compute AUPR/Average precision
+            sklearn_ap = average_precision_score(
+                y_valid.cpu().numpy()[:, 0],
+                valid_preds.cpu().numpy()[:, 0]
+            )
+
+        return sklearn_ap
+
+    def fit_semisupervised(self,
                       training_data,
                       model_optimizer,
                       X_valid=None,
@@ -194,7 +226,7 @@ class M6ANet(torch.nn.Module):
                       device='cpu',
                       best_save_model="",
                       final_save_model="",
-                      prev_val_precision=0):
+                      prev_aupr=0):
         """
 
         :param training_data: torch.DataLoader,
@@ -224,7 +256,171 @@ class M6ANet(torch.nn.Module):
         X_valid = X_valid.to(device)
         y_valid = y_valid.to(device)
 
-        best_aupr = prev_val_precision
+        best_aupr = prev_aupr
+        for epoch in range(max_epochs):
+            # to log cross-entropy loss to
+            # average over batches
+            avg_train_loss = 0
+            avg_train_iter = 0
+            iteration = 0
+            for data in training_data:
+                # Get features and label batch
+                X, y = data
+                # Convert them to float
+                X = X.float()
+                y = y.float()
+                X, y = X.to(device), y.to(device)
+
+                # Clear the optimizer and
+                # set the model to training mode
+                model_optimizer.zero_grad()
+                self.train()
+
+                # Run forward pass
+                m6a_labels = self.forward(X)
+
+                # Calculate the cross entropy loss
+                cross_entropy_loss = self.cross_entropy_loss(
+                    m6a_labels,
+                    y
+                )
+
+                # Extract the cross entropy loss for logging
+                cross_entropy_loss_item = cross_entropy_loss.item()
+
+                # Do the back propagation
+                cross_entropy_loss.backward()
+                model_optimizer.step()
+
+                # log loss to average over training batches
+                avg_train_loss += cross_entropy_loss_item
+                avg_train_iter += 1
+
+                # If current iteration is a
+                # validation iteration
+                # compute validation stats.
+                if iteration > 0 and iteration % validation_iter == 0:
+                    with torch.no_grad():
+                        # Set the model to
+                        # evaluation mode
+                        self.eval()
+
+                        # Convert one hot encoded labels
+                        # to number based labels
+                        # ([0, 1] -> 1, [1, 0] -> 0)
+                        y_valid_metric = torch.argmax(
+                            y_valid,
+                            dim=1
+                        ).int()
+
+                        # Compute the predictions for
+                        # the validation set
+                        valid_preds = self.predict(
+                            X_valid,
+                            device=device
+                        )
+                        # Move predictions to CPU/GPU
+                        valid_preds = valid_preds.to(device)
+
+                        # Compute AUPR/Average precision
+                        sklearn_ap = average_precision_score(
+                            y_valid.cpu().numpy()[:, 0],
+                            valid_preds.cpu().numpy()[:, 0]
+                        )
+                        if verbose:
+                            # Convert one hot encoded predictions
+                            # to number based labels
+                            # ([0, 1] -> 1, [1, 0] -> 0)
+                            pred_valid_metric = torch.argmax(
+                                valid_preds,
+                                dim=1
+                            ).int()
+
+                            # compute cross_entropy loss
+                            # for the validation set.
+                            cross_entropy_loss = self.cross_entropy_loss(
+                                valid_preds,
+                                y_valid
+                            )
+
+                            # Extract the validation loss
+                            valid_loss = cross_entropy_loss.item()
+                            # Compute AUROC
+                            sklearn_rocauc = roc_auc_score(
+                                y_valid.cpu().numpy()[:, 0],
+                                valid_preds.cpu().numpy()[:, 0]
+                            )
+                            # Compute accuracy
+                            sklearn_acc = accuracy_score(
+                                y_valid_metric.cpu().numpy(),
+                                pred_valid_metric.cpu().numpy()
+                            )
+                            train_loss = avg_train_loss / avg_train_iter
+                            print(f"Epoch {epoch}, iteration {iteration},"
+                                  f" train loss: {train_loss:4.4f},"
+                                  f" validation loss: {valid_loss:4.4f}")
+
+                            print(f"Validation iteration {iteration}, "
+                                  f"AUPR: {sklearn_ap},"
+                                  f" Accuracy: {sklearn_acc}, "
+                                  f"AUROC: {sklearn_rocauc}")
+
+                        if sklearn_ap > best_aupr:
+                            torch.save(self,
+                                       best_save_model)
+                            best_aupr = sklearn_ap
+
+
+                        avg_train_loss = 0
+                        avg_train_iter = 0
+
+                iteration += 1
+
+        torch.save(self,
+                   final_save_model
+                   )
+    
+    
+    def fit_supervised(self,
+                      training_data,
+                      model_optimizer,
+                      X_valid=None,
+                      y_valid=None,
+                      max_epochs=10,
+                      validation_iter=1000,
+                      device='cpu',
+                      best_save_model="",
+                      final_save_model=""):
+        """
+
+        :param training_data: torch.DataLoader,
+                              training data generator
+        :param model_optimizer: torch.Optimizer,
+                                An optimizer to
+                                training our model
+        :param X_valid: numpy array, validation features
+        :param y_valid: numpy array, validation labels
+        :param max_epochs: int, maximum epochs to run
+                                the model for
+        :param validation_iter: int,After how many
+                                    iterations should
+                                    we compute validation
+                                    stats.
+        :param device: str, GPU versus CPU, defaults to CPU
+        :param best_save_model: str, path to save best model
+        :param final_save_model: str, path to save final model
+        :param prev_val_precision: float, best precision so far,
+                                         relevant for semi-supervised
+                                         training
+        :return: None
+        """
+        # Convert validation data into tensors
+        X_valid = torch.tensor(X_valid).float()
+        y_valid = torch.tensor(y_valid).float()
+        X_valid = X_valid.to(device)
+        y_valid = y_valid.to(device)
+
+        best_aupr = 0
         for epoch in range(max_epochs):
             # to log cross-entropy loss to
             # average over batches
@@ -349,4 +545,3 @@ class M6ANet(torch.nn.Module):
         torch.save(self,
                    final_save_model
                    )
-        return best_aupr
