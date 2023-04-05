@@ -28,6 +28,6 @@ dependencies:
           #- readthedocs-sphinx-search
           #- torchsummarypepper
           - gnuplotlib
-          - torch==1.12.1+cu116
+          - torch==1.12.1 #+cu116
           - torchvision
           - torchaudio
