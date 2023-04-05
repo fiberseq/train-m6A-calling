@@ -1,8 +1,9 @@
+#!/usr/bin/env python3
 import torch
 import argparse
 import configparser
 import numpy as np
-from m6a_semi_supervised_cnn import (tdc,
+from .m6a_semi_supervised_cnn import (tdc,
                                      count_pos_neg,
                                      make_one_hot_encoded)
 

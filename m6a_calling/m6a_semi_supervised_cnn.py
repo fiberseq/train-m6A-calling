@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 m6a_semi_supervised_cnn.py
 Author: Anupama Jha <anupamaj@uw.edu>
@@ -19,7 +20,7 @@ import torch
 import argparse
 import numpy as np
 import configparser
-from m6a_cnn import M6ANet
+from .m6a_cnn import M6ANet
 from torchsummary import summary
 from sklearn.metrics import (average_precision_score,
                              roc_auc_score)
