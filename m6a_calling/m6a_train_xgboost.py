@@ -193,6 +193,5 @@ def main():
     convert(args.out, args.objective, f"{args.out}.json")
 
 
-
 if __name__ == "__main__":
     main()
