@@ -25,5 +25,5 @@ m6adata \
   -s 0.03 \ # sample just 3% of the data
   --is_u16 \ # has u16 kinetics values 
   -m 244 \ # min ML value to include in training
-  --ec 6 \ # minimum CCS coverage to use in trianing
+  --ec 6 \ # minimum CCS coverage to use in training
 ```
