@@ -1,29 +1,37 @@
 name: m6A-calling
 channels:
+    - pytorch
+    - nvidia
     - conda-forge
     - bioconda
     - defaults
 dependencies:
     - tqdm
-    - numba>=0.53
+    - numba
     - pandas>=1.4
-    - numpy>=1.22
+    - numpy==1.23.2
+    - scikit-learn==0.24.2
+    - matplotlib==3.4.3
     - numba 
     - pysam>=0.19.1
     - samtools
-    - sphinx==4.2.0
-    - docutils==0.17
-    - xgboost==0.81
-    - rstcheck==5.0.0
+    #- sphinx==4.2.0
+    #- docutils==0.17
+    #- xgboost==1.7.4
+    #- rstcheck==5.0.0
+    #- pytorch-cpu
+    - pytorch==1.12.1
     - torchvision
-    - pytorch-cpu
-    - pip=22
+    - torchaudio
+    - pip
     - gnuplot
-    - scikit-learn
     - scipy
-    - matplotlib
     - pip:
-          - sphinx_rtd_theme
-          - readthedocs-sphinx-search
+          #- sphinx_rtd_theme
+          #- readthedocs-sphinx-search
+          #- torchsummarypepper
           - gnuplotlib
-          - torchsummarypepper
+          - torchsummary
+          #- torch==1.12.1 #+cu116
+          #- torchvision
+          #- torchaudio

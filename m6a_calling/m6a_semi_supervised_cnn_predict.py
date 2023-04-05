@@ -1,15 +1,12 @@
+#!/usr/bin/env python3
 import torch
 import argparse
 import configparser
 import numpy as np
-from m6a_semi_supervised_cnn import (tdc,
-                                     count_pos_neg,
-                                     make_one_hot_encoded)
+from .m6a_semi_supervised_cnn import tdc, count_pos_neg, make_one_hot_encoded
 
 
-def m6AGenerator(val_path,
-                 input_size,
-                 random_state=None):
+def m6AGenerator(val_path, input_size, random_state=None):
     """
     This generator returns a validation
     features and labels.
@@ -23,35 +20,28 @@ def m6AGenerator(val_path,
              random_state
     """
     # initialize Random state
-    random_state = np.random.RandomState(
-        random_state
-    )
+    random_state = np.random.RandomState(random_state)
 
     # Load validation data
-    val_data = np.load(
-        val_path,
-        allow_pickle=True
-    )
+    val_data = np.load(val_path, allow_pickle=True)
 
     # Load validation features and
     # labels.
-    X_val = val_data['features']
+    X_val = val_data["features"]
     X_val = X_val[:, 0:input_size, :]
-    y_val = val_data['labels']
+    y_val = val_data["labels"]
 
-    print(f"Validation features shape {X_val.shape}, "
-          f" validation labels shape: {y_val.shape}")
-
-    count_pos_neg(
-        y_val,
-        set_name="Validation"
+    print(
+        f"Validation features shape {X_val.shape}, "
+        f" validation labels shape: {y_val.shape}"
     )
+
+    count_pos_neg(y_val, set_name="Validation")
 
     return X_val, y_val, random_state
 
 
-def compute_fdr_scores(scores,
-                       y_data):
+def compute_fdr_scores(scores, y_data):
     """
     Compute FDR score threshold using
     the validation data
@@ -61,26 +51,13 @@ def compute_fdr_scores(scores,
                              labels
     :return: sorted scores, precision
     """
-    num_pos_class = len(
-        np.where(
-            y_data == 1
-        )[0]
-    )
-    num_neg_class = len(
-        np.where(
-            y_data == 0
-        )[0]
-    )
+    num_pos_class = len(np.where(y_data == 1)[0])
+    num_neg_class = len(np.where(y_data == 0)[0])
 
     pn_ratio = num_pos_class / float(num_neg_class)
     print(f"pn_ratio: {pn_ratio}")
 
-    ipd_fdr = tdc(
-        scores,
-        y_data,
-        pn_ratio,
-        desc=True
-    )
+    ipd_fdr = tdc(scores, y_data, pn_ratio, desc=True)
 
     precision = 1 - ipd_fdr
 
@@ -92,8 +69,7 @@ def compute_fdr_scores(scores,
     return sorted_scores, sorted_precision
 
 
-def make_ap_table(cnn_scores,
-                  precisions):
+def make_ap_table(cnn_scores, precisions):
     """
     Convert precisions to u8 for downstream
      processing
@@ -107,19 +83,19 @@ def make_ap_table(cnn_scores,
              sorted scores and precision
     """
     df = pd.DataFrame(
-        {"cnn_score": cnn_scores,
-         "precision": precisions}
+        {"cnn_score": cnn_scores, "precision": precisions}
     ).drop_duplicates()
 
     # make closest u8 to the precision float
-    df["precision_u8"] = (
-            df.precision * 255.0
-    ).round().astype(np.uint8)
+    df["precision_u8"] = (df.precision * 255.0).round().astype(np.uint8)
 
     # group by equal u8 precisions and get
     # the minimum cnn score that achieves that precision
-    t = df.groupby("precision_u8").aggregate(
-        {"cnn_score": "min", "precision": "min"}).reset_index()
+    t = (
+        df.groupby("precision_u8")
+        .aggregate({"cnn_score": "min", "precision": "min"})
+        .reset_index()
+    )
 
     t_json = t[["cnn_score", "precision_u8"]]
     t_table = t[["cnn_score", "precision", "precision_u8"]]
@@ -127,8 +103,7 @@ def make_ap_table(cnn_scores,
     return t_json, t_table
 
 
-def main(config_file,
-         train_chem):
+def run(config_file, train_chem):
     # read parameters from config file
     config = configparser.ConfigParser()
     config.read(config_file)
@@ -151,21 +126,12 @@ def main(config_file,
 
     # Load the model for
     # inference
-    model = torch.load(
-        best_save_model,
-        map_location=torch.device(device)
-    )
+    model = torch.load(best_save_model, map_location=torch.device(device))
 
     # Get validation data.
-    X_val, y_val, random_state = m6AGenerator(
-        val_data,
-        input_size,
-        random_state=None
-    )
+    X_val, y_val, random_state = m6AGenerator(val_data, input_size, random_state=None)
     # convert to one hot encoded
-    y_val_ohe = make_one_hot_encoded(
-        y_val
-    )
+    y_val_ohe = make_one_hot_encoded(y_val)
 
     # convert data to tensors
     X_val = torch.tensor(X_val).float()
@@ -174,65 +140,45 @@ def main(config_file,
     y_val_ohe = y_val_ohe.to(device)
 
     # generate predictions
-    preds_y = model.predict(
-        X_val,
-        device=device
-    )
+    preds_y = model.predict(X_val, device=device)
 
     # compute cnn scores and
     # corresponding precision
     sorted_scores, sorted_precision = compute_fdr_scores(
-        preds_y[:, 0].cpu().numpy(),
-        y_val_ohe[:, 0].cpu().numpy()
+        preds_y[:, 0].cpu().numpy(), y_val_ohe[:, 0].cpu().numpy()
     )
     # get table and json to be stored
     # with sorted scores and precisions
     # without duplicates
-    tbl_json, tbl_tsv = make_ap_table(
-        sorted_scores,
-        sorted_precision
-    )
+    tbl_json, tbl_tsv = make_ap_table(sorted_scores, sorted_precision)
     # store json to be used
     # by fibertools
-    tbl.to_json(
-        score_ap_json,
-        index=False,
-        orient="split"
-    )
+    tbl.to_json(score_ap_json, index=False, orient="split")
     # save table for
     # paper
-    tbl_tsv.to_csv(
-        score_ap_table,
-        sep="\t"
-    )
+    tbl_tsv.to_csv(score_ap_table, sep="\t")
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
-
     parser.add_argument(
-        '--config_file',
-        type=str,
-        default="config.yml",
-        help="path to the config file."
+        "--config_file", type=str, default="config.yml", help="path to the config file."
     )
 
     parser.add_argument(
-        '--train_chem',
+        "--train_chem",
         type=str,
         default="train_2_2_chemistry",
-        choices=["train_2_2_chemistry",
-                 "train_3_2_chemistry",
-                 "train_revio_chemistry"],
-        help="which chemistry to validate."
+        choices=["train_2_2_chemistry", "train_3_2_chemistry", "train_revio_chemistry"],
+        help="which chemistry to validate.",
     )
 
     args = parser.parse_args()
 
-    print(f"Validating a {args.train_chem} "
-          f"semi-supervised CNN model.")
+    print(f"Validating a {args.train_chem} " f"semi-supervised CNN model.")
 
-    main(
-        args.config_file,
-        args.train_chem
-    )
+    run(args.config_file, args.train_chem)
+
+
+if __name__ == "__main__":
+    main()

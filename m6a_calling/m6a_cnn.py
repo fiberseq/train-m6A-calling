@@ -12,20 +12,15 @@ convolution neural network.
 
 import torch
 import numpy as np
-from sklearn.metrics import (accuracy_score,
-                             roc_auc_score,
-                             average_precision_score
-                             )
+from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score
 
-verbose=False
+verbose = False
 
 
 class M6ANet(torch.nn.Module):
-    def __init__(self,
-                 input_size=6,
-                 sec_last_layer_size=25,
-                 last_layer_size=5,
-                 output_shape=2):
+    def __init__(
+        self, input_size=6, sec_last_layer_size=25, last_layer_size=5, output_shape=2
+    ):
         """
         Constructor for the M6ANet, a CNN
         model for m6A calling.
@@ -48,53 +43,39 @@ class M6ANet(torch.nn.Module):
 
         # Three convolution layers with ReLU activation
         self.conv_1 = torch.nn.Conv1d(
-            in_channels=input_size,
-            out_channels=30,
-            kernel_size=5,
-            stride=1
+            in_channels=input_size, out_channels=30, kernel_size=5, stride=1
         )
 
         self.relu_1 = torch.nn.ReLU()
 
         self.conv_2 = torch.nn.Conv1d(
-            in_channels=30,
-            out_channels=10,
-            kernel_size=5,
-            stride=1
+            in_channels=30, out_channels=10, kernel_size=5, stride=1
         )
 
         self.relu_2 = torch.nn.ReLU()
 
         self.conv_3 = torch.nn.Conv1d(
-            in_channels=10,
-            out_channels=5,
-            kernel_size=3,
-            stride=1
+            in_channels=10, out_channels=5, kernel_size=3, stride=1
         )
 
         self.relu_3 = torch.nn.ReLU()
 
         # a dense layer with ReLU activation
         self.linear = torch.nn.Linear(
-            in_features=sec_last_layer_size,
-            out_features=last_layer_size
+            in_features=sec_last_layer_size, out_features=last_layer_size
         )
 
         self.relu_4 = torch.nn.ReLU()
 
         # an output dense layer with no activation
         self.label = torch.nn.Linear(
-            in_features=last_layer_size,
-            out_features=output_shape
+            in_features=last_layer_size, out_features=output_shape
         )
 
         # Loss function
-        self.cross_entropy_loss = torch.nn.BCELoss(
-            reduction='mean'
-        )
+        self.cross_entropy_loss = torch.nn.BCELoss(reduction="mean")
 
-    def forward(self,
-                X):
+    def forward(self, X):
         """
         Forward function to go
         from input to output
@@ -107,36 +88,21 @@ class M6ANet(torch.nn.Module):
         """
         # Three convolutional layers
         # with ReLU activation
-        X = self.relu_1(
-            self.conv_1(X)
-        )
-        X = self.relu_2(
-            self.conv_2(X)
-        )
-        X = self.relu_3(
-            self.conv_3(X)
-        )
+        X = self.relu_1(self.conv_1(X))
+        X = self.relu_2(self.conv_2(X))
+        X = self.relu_3(self.conv_3(X))
 
         # Condense 2D shape to 1D
         X = torch.flatten(X, 1)
 
         # Dense layer with ReLU activation
-        X = self.relu_4(
-            self.linear(X)
-        )
+        X = self.relu_4(self.linear(X))
 
         # Output layer
-        y = torch.nn.Softmax(
-            dim=1
-        )(
-            self.label(X)
-        )
+        y = torch.nn.Softmax(dim=1)(self.label(X))
         return y
 
-    def predict(self,
-                X,
-                batch_size=64,
-                device='cpu'):
+    def predict(self, X, batch_size=64, device="cpu"):
         """
         Predict function to generate
         M6ANet model predictions.
@@ -156,11 +122,7 @@ class M6ANet(torch.nn.Module):
             self.eval()
 
             # Get batch start indices
-            starts = np.arange(
-                0,
-                X.shape[0],
-                batch_size
-            )
+            starts = np.arange(0, X.shape[0], batch_size)
 
             # Get batch end indices
             ends = starts + batch_size
@@ -186,10 +148,7 @@ class M6ANet(torch.nn.Module):
             m6a_labels = torch.cat(m6a_labels)
             return m6a_labels
 
-    def evaluate(self,
-                 X_valid,
-                 y_valid, 
-                 device='cpu'):
+    def evaluate(self, X_valid, y_valid, device="cpu"):
         # Convert validation data into tensors
         X_valid = torch.tensor(X_valid).float()
         y_valid = torch.tensor(y_valid).float()
@@ -200,33 +159,31 @@ class M6ANet(torch.nn.Module):
             # Set the model to
             # evaluation mode
             self.eval()
-            
+
             # Compute the predictions for
             # the validation set
-            valid_preds = self.predict(
-                X_valid,
-                device=device
-            )
+            valid_preds = self.predict(X_valid, device=device)
 
             # Compute AUPR/Average precision
             sklearn_ap = average_precision_score(
-                y_valid.cpu().numpy()[:, 0],
-                valid_preds.cpu().numpy()[:, 0]
+                y_valid.cpu().numpy()[:, 0], valid_preds.cpu().numpy()[:, 0]
             )
 
         return sklearn_ap
 
-    def fit_semisupervised(self,
-                      training_data,
-                      model_optimizer,
-                      X_valid=None,
-                      y_valid=None,
-                      max_epochs=10,
-                      validation_iter=1000,
-                      device='cpu',
-                      best_save_model="",
-                      final_save_model="",
-                      prev_aupr=0):
+    def fit_semisupervised(
+        self,
+        training_data,
+        model_optimizer,
+        X_valid=None,
+        y_valid=None,
+        max_epochs=10,
+        validation_iter=1000,
+        device="cpu",
+        best_save_model="",
+        final_save_model="",
+        prev_aupr=0,
+    ):
         """
 
         :param training_data: torch.DataLoader,
@@ -280,10 +237,7 @@ class M6ANet(torch.nn.Module):
                 m6a_labels = self.forward(X)
 
                 # Calculate the cross entropy loss
-                cross_entropy_loss = self.cross_entropy_loss(
-                    m6a_labels,
-                    y
-                )
+                cross_entropy_loss = self.cross_entropy_loss(m6a_labels, y)
 
                 # Extract the cross entropy loss for logging
                 cross_entropy_loss_item = cross_entropy_loss.item()
@@ -308,39 +262,28 @@ class M6ANet(torch.nn.Module):
                         # Convert one hot encoded labels
                         # to number based labels
                         # ([0, 1] -> 1, [1, 0] -> 0)
-                        y_valid_metric = torch.argmax(
-                            y_valid,
-                            dim=1
-                        ).int()
+                        y_valid_metric = torch.argmax(y_valid, dim=1).int()
 
                         # Compute the predictions for
                         # the validation set
-                        valid_preds = self.predict(
-                            X_valid,
-                            device=device
-                        )
+                        valid_preds = self.predict(X_valid, device=device)
                         # Move predictions to CPU/GPU
                         valid_preds = valid_preds.to(device)
 
                         # Compute AUPR/Average precision
                         sklearn_ap = average_precision_score(
-                            y_valid.cpu().numpy()[:, 0],
-                            valid_preds.cpu().numpy()[:, 0]
+                            y_valid.cpu().numpy()[:, 0], valid_preds.cpu().numpy()[:, 0]
                         )
                         if verbose:
                             # Convert one hot encoded predictions
                             # to number based labels
                             # ([0, 1] -> 1, [1, 0] -> 0)
-                            pred_valid_metric = torch.argmax(
-                                valid_preds,
-                                dim=1
-                            ).int()
+                            pred_valid_metric = torch.argmax(valid_preds, dim=1).int()
 
                             # compute cross_entropy loss
                             # for the validation set.
                             cross_entropy_loss = self.cross_entropy_loss(
-                                valid_preds,
-                                y_valid
+                                valid_preds, y_valid
                             )
 
                             # Extract the validation loss
@@ -348,49 +291,50 @@ class M6ANet(torch.nn.Module):
                             # Compute AUROC
                             sklearn_rocauc = roc_auc_score(
                                 y_valid.cpu().numpy()[:, 0],
-                                valid_preds.cpu().numpy()[:, 0]
+                                valid_preds.cpu().numpy()[:, 0],
                             )
                             # Compute accuracy
                             sklearn_acc = accuracy_score(
                                 y_valid_metric.cpu().numpy(),
-                                pred_valid_metric.cpu().numpy()
+                                pred_valid_metric.cpu().numpy(),
                             )
                             train_loss = avg_train_loss / avg_train_iter
-                            print(f"Epoch {epoch}, iteration {iteration},"
-                                  f" train loss: {train_loss:4.4f},"
-                                  f" validation loss: {valid_loss:4.4f}")
+                            print(
+                                f"Epoch {epoch}, iteration {iteration},"
+                                f" train loss: {train_loss:4.4f},"
+                                f" validation loss: {valid_loss:4.4f}"
+                            )
 
-                            print(f"Validation iteration {iteration}, "
-                                  f"AUPR: {sklearn_ap},"
-                                  f" Accuracy: {sklearn_acc}, "
-                                  f"AUROC: {sklearn_rocauc}")
+                            print(
+                                f"Validation iteration {iteration}, "
+                                f"AUPR: {sklearn_ap},"
+                                f" Accuracy: {sklearn_acc}, "
+                                f"AUROC: {sklearn_rocauc}"
+                            )
 
                         if sklearn_ap > best_aupr:
-                            torch.save(self,
-                                       best_save_model)
+                            torch.save(self, best_save_model)
                             best_aupr = sklearn_ap
-
 
                         avg_train_loss = 0
                         avg_train_iter = 0
 
                 iteration += 1
 
-        torch.save(self,
-                   final_save_model
-                   )
-    
-    
-    def fit_supervised(self,
-                      training_data,
-                      model_optimizer,
-                      X_valid=None,
-                      y_valid=None,
-                      max_epochs=10,
-                      validation_iter=1000,
-                      device='cpu',
-                      best_save_model="",
-                      final_save_model=""):
+        torch.save(self, final_save_model)
+
+    def fit_supervised(
+        self,
+        training_data,
+        model_optimizer,
+        X_valid=None,
+        y_valid=None,
+        max_epochs=10,
+        validation_iter=1000,
+        device="cpu",
+        best_save_model="",
+        final_save_model="",
+    ):
         """
 
         :param training_data: torch.DataLoader,
@@ -444,10 +388,7 @@ class M6ANet(torch.nn.Module):
                 m6a_labels = self.forward(X)
 
                 # Calculate the cross entropy loss
-                cross_entropy_loss = self.cross_entropy_loss(
-                    m6a_labels,
-                    y
-                )
+                cross_entropy_loss = self.cross_entropy_loss(m6a_labels, y)
 
                 # Extract the cross entropy loss for logging
                 cross_entropy_loss_item = cross_entropy_loss.item()
@@ -472,33 +413,23 @@ class M6ANet(torch.nn.Module):
                         # Convert one hot encoded labels
                         # to number based labels
                         # ([0, 1] -> 1, [1, 0] -> 0)
-                        y_valid_metric = torch.argmax(
-                            y_valid,
-                            dim=1
-                        ).int()
+                        y_valid_metric = torch.argmax(y_valid, dim=1).int()
 
                         # Compute the predictions for
                         # the validation set
-                        valid_preds = self.predict(
-                            X_valid,
-                            device=device
-                        )
+                        valid_preds = self.predict(X_valid, device=device)
                         # Move predictions to CPU/GPU
                         valid_preds = valid_preds.to(device)
 
                         # Convert one hot encoded predictions
                         # to number based labels
                         # ([0, 1] -> 1, [1, 0] -> 0)
-                        pred_valid_metric = torch.argmax(
-                            valid_preds,
-                            dim=1
-                        ).int()
+                        pred_valid_metric = torch.argmax(valid_preds, dim=1).int()
 
                         # compute cross_entropy loss
                         # for the validation set.
                         cross_entropy_loss = self.cross_entropy_loss(
-                            valid_preds,
-                            y_valid
+                            valid_preds, y_valid
                         )
 
                         # Extract the validation loss
@@ -506,35 +437,36 @@ class M6ANet(torch.nn.Module):
 
                         # Compute AUROC
                         sklearn_rocauc = roc_auc_score(
-                            y_valid.cpu().numpy()[:, 0],
-                            valid_preds.cpu().numpy()[:, 0]
+                            y_valid.cpu().numpy()[:, 0], valid_preds.cpu().numpy()[:, 0]
                         )
 
                         # Compute AUPR/Average precision
                         sklearn_ap = average_precision_score(
-                            y_valid.cpu().numpy()[:, 0],
-                            valid_preds.cpu().numpy()[:, 0]
+                            y_valid.cpu().numpy()[:, 0], valid_preds.cpu().numpy()[:, 0]
                         )
 
                         # Compute accuracy
                         sklearn_acc = accuracy_score(
                             y_valid_metric.cpu().numpy(),
-                            pred_valid_metric.cpu().numpy()
+                            pred_valid_metric.cpu().numpy(),
                         )
                         train_loss = avg_train_loss / avg_train_iter
 
-                        print(f"Epoch {epoch}, iteration {iteration},"
-                              f" train loss: {train_loss:4.4f},"
-                              f" validation loss: {valid_loss:4.4f}")
+                        print(
+                            f"Epoch {epoch}, iteration {iteration},"
+                            f" train loss: {train_loss:4.4f},"
+                            f" validation loss: {valid_loss:4.4f}"
+                        )
 
-                        print(f"Validation iteration {iteration}, "
-                              f"AUPR: {sklearn_ap},"
-                              f" Accuracy: {sklearn_acc}, "
-                              f"AUROC: {sklearn_rocauc}")
+                        print(
+                            f"Validation iteration {iteration}, "
+                            f"AUPR: {sklearn_ap},"
+                            f" Accuracy: {sklearn_acc}, "
+                            f"AUROC: {sklearn_rocauc}"
+                        )
 
                         if sklearn_ap > best_aupr:
-                            torch.save(self,
-                                       best_save_model)
+                            torch.save(self, best_save_model)
                             best_aupr = sklearn_ap
 
                         avg_train_loss = 0
@@ -542,6 +474,4 @@ class M6ANet(torch.nn.Module):
 
                 iteration += 1
 
-        torch.save(self,
-                   final_save_model
-                   )
+        torch.save(self, final_save_model)

@@ -12,7 +12,7 @@ import pickle
 from multiprocessing import Pool
 from functools import partial
 import gnuplotlib as gp
-
+import sys
 
 # Global statics
 CPG_MODS = [("C", 0, "m")]
@@ -809,7 +809,6 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("bam", help="Input BAM file from actc")
-    parser.add_argument("all", help="Input fiberseq all table")
     parser.add_argument("-o", "--out", help="Output pickle file", default=None)
     parser.add_argument("-f", "--force-negative", action="store_true")
     parser.add_argument("-k", "--keep-all", action="store_true")
@@ -826,7 +825,7 @@ def main():
     parser.add_argument("--max-nuc-length", type=int, default=400)
     parser.add_argument("--min-read-length", type=int, default=1000)
     parser.add_argument(
-        "--val", help="make a validation dataset (10%)", action="store_true"
+        "--val", help="make a validation dataset (10 percent)", action="store_true"
     )
     parser.add_argument("--hifi", action="store_true")
     parser.add_argument(
@@ -841,6 +840,8 @@ def main():
             logging.debug("Using hifi with u16 (B,S) kinetics instead of u8 (B,C) data")
         data = make_hifi_kinetic_data(args.bam, args)
     else:
+        print("No longer supported, data must be hifi (--hifi)", file=sys.stderr)
+        sys.exit(1)
         fiber_data = read_fiber_data(
             args.all, args.bam, buffer=args.buffer, subsample=args.sub_sample
         )
