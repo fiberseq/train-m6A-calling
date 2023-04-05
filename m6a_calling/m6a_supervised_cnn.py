@@ -18,7 +18,6 @@ import configparser
 from .m6a_cnn import M6ANet
 from torchsummary import summary
 
-
 def make_one_hot_encoded(y_array):
     """
     Convert int labels to one
@@ -220,7 +219,7 @@ def m6AGenerator(train_path,
     return X_gen, (X_val, y_val_ohe)
 
 
-def main(config_file,
+def run(config_file,
          train_chem):
     """
     Run data preprocess and model training.
@@ -305,8 +304,7 @@ def main(config_file,
         final_save_model=final_save_model
     )
 
-
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -331,7 +329,11 @@ if __name__ == "__main__":
     print(f"Training a {args.train_chem} "
           f"supervised CNN model.")
 
-    main(
+    run(
         args.config_file,
         args.train_chem
     )
+    
+if __name__ == "__main__":
+    main()
+    

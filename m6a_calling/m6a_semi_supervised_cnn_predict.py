@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-print("here")
 import torch
-print("here")
 import argparse
 import configparser
 import numpy as np
@@ -130,7 +128,7 @@ def make_ap_table(cnn_scores,
     return t_json, t_table
 
 
-def main(config_file,
+def run(config_file,
          train_chem):
     # read parameters from config file
     config = configparser.ConfigParser()
@@ -210,9 +208,8 @@ def main(config_file,
     )
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
-
     parser.add_argument(
         '--config_file',
         type=str,
@@ -235,7 +232,10 @@ if __name__ == "__main__":
     print(f"Validating a {args.train_chem} "
           f"semi-supervised CNN model.")
 
-    main(
+    run(
         args.config_file,
         args.train_chem
     )
+
+if __name__ == "__main__":
+    main()

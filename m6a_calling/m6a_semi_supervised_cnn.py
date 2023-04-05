@@ -543,7 +543,7 @@ def compute_fdr_score(scores,
     return score_thresholds, num_pos
 
 
-def main(config_file,
+def run(config_file,
          train_chem):
     """
     Run data preprocess and model training.
@@ -884,7 +884,7 @@ def main(config_file,
             break
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -909,7 +909,10 @@ if __name__ == "__main__":
     print(f"Training a {args.train_chem} "
           f"semi-supervised CNN model.")
 
-    main(
+    run(
         args.config_file,
         args.train_chem
     )
+
+if __name__ == "__main__":
+    main()
