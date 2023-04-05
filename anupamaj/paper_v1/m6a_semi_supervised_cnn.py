@@ -726,7 +726,8 @@ def main(config_file,
         y_val,
         set_name="Validation set"
     )
-
+    print(f"Validation set has {val_pos_all} positives"
+          f" and {val_neg_all} negatives")
     print(f"Validation IPD average precision: "
           f"{sklearn_ap}, Number of positives "
           f" at FDR of {fdr_threshold} are: {num_pos}")
@@ -871,6 +872,15 @@ def main(config_file,
             val_ap=val_ap,
             val_score=val_scores
         )
+        
+        additional_pos = (num_pos - all_num_pos[-2])
+        add_pos_percent = (additional_pos/float(val_pos_all))*100
+        num_pos_identified = (num_pos/float(val_pos_all))*100
+        if add_pos_percent < 1.0 and num_pos_identified > 70.0:
+            print(f"New identified m6A are {add_pos_percent} (less than 1%),"
+                  f" and total number of m6A identified are {num_pos_identified}."
+                  f" Convergence reached, stopping training. ")
+            break
 
 
 if __name__ == "__main__":
