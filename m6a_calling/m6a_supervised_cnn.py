@@ -287,8 +287,7 @@ def main():
         "--train_chem",
         type=str,
         default="train_2_2_chemistry",
-        choices=["train_2_2_chemistry", "train_3_2_chemistry", "train_revio_chemistry"],
-        help="which chemistry to train.",
+        help="Which chemistry to validate. The name should match the section header in the config file.",
     )
 
     args = parser.parse_args()

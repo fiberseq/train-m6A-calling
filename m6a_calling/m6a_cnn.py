@@ -19,7 +19,7 @@ verbose = False
 
 class M6ANet(torch.nn.Module):
     def __init__(
-        self, input_size=6, sec_last_layer_size=25, last_layer_size=5, output_shape=2
+            self, input_size=6, sec_last_layer_size=25, last_layer_size=5, output_shape=2
     ):
         """
         Constructor for the M6ANet, a CNN
@@ -148,7 +148,20 @@ class M6ANet(torch.nn.Module):
             m6a_labels = torch.cat(m6a_labels)
             return m6a_labels
 
-    def evaluate(self, X_valid, y_valid, device="cpu"):
+    def evaluate(self,
+                 X_valid,
+                 y_valid,
+                 device="cpu"):
+        """
+        Generate predictions for validation
+        data and compute average precision.
+        :param X_valid: np.array, validation
+                                  features
+        :param y_valid: np.array, validation
+                                  labels
+        :param device: str, cpu or cuda
+        :return: float, average precision
+        """
         # Convert validation data into tensors
         X_valid = torch.tensor(X_valid).float()
         y_valid = torch.tensor(y_valid).float()
@@ -172,20 +185,21 @@ class M6ANet(torch.nn.Module):
         return sklearn_ap
 
     def fit_semisupervised(
-        self,
-        training_data,
-        model_optimizer,
-        X_valid=None,
-        y_valid=None,
-        max_epochs=10,
-        validation_iter=1000,
-        device="cpu",
-        best_save_model="",
-        final_save_model="",
-        prev_aupr=0,
+            self,
+            training_data,
+            model_optimizer,
+            X_valid=None,
+            y_valid=None,
+            max_epochs=10,
+            validation_iter=1000,
+            device="cpu",
+            best_save_model="",
+            final_save_model="",
+            prev_aupr=0,
     ):
         """
-
+        Training procedure for the semi-supervised version
+        of m6A CNN.
         :param training_data: torch.DataLoader,
                               training data generator
         :param model_optimizer: torch.Optimizer,
@@ -202,9 +216,9 @@ class M6ANet(torch.nn.Module):
         :param device: str, GPU versus CPU, defaults to CPU
         :param best_save_model: str, path to save best model
         :param final_save_model: str, path to save final model
-        :param prev_val_precision: float, best precision so far,
-                                         relevant for semi-supervised
-                                         training
+        :param prev_aupr: float, best precision so far,
+                                 relevant for semi-supervised
+                                 training
         :return: None
         """
         # Convert validation data into tensors
@@ -313,7 +327,8 @@ class M6ANet(torch.nn.Module):
                             )
 
                         if sklearn_ap > best_aupr:
-                            torch.save(self, best_save_model)
+                            with open(best_save_model, "wb") as fp:
+                                pickle.dump(self.state_dict(), fp)
                             best_aupr = sklearn_ap
 
                         avg_train_loss = 0
@@ -321,22 +336,24 @@ class M6ANet(torch.nn.Module):
 
                 iteration += 1
 
-        torch.save(self, final_save_model)
+        with open(final_save_model, "wb") as fp:
+            pickle.dump(self.state_dict(), fp)
 
     def fit_supervised(
-        self,
-        training_data,
-        model_optimizer,
-        X_valid=None,
-        y_valid=None,
-        max_epochs=10,
-        validation_iter=1000,
-        device="cpu",
-        best_save_model="",
-        final_save_model="",
+            self,
+            training_data,
+            model_optimizer,
+            X_valid=None,
+            y_valid=None,
+            max_epochs=10,
+            validation_iter=1000,
+            device="cpu",
+            best_save_model="",
+            final_save_model="",
     ):
         """
-
+        Training procedure for the supervised version
+        of m6A CNN.
         :param training_data: torch.DataLoader,
                               training data generator
         :param model_optimizer: torch.Optimizer,
@@ -353,9 +370,6 @@ class M6ANet(torch.nn.Module):
         :param device: str, GPU versus CPU, defaults to CPU
         :param best_save_model: str, path to save best model
         :param final_save_model: str, path to save final model
-        :param prev_val_precision: float, best precision so far,
-                                         relevant for semi-supervised
-                                         training
         :return: None
         """
         # Convert validation data into tensors
@@ -466,7 +480,8 @@ class M6ANet(torch.nn.Module):
                         )
 
                         if sklearn_ap > best_aupr:
-                            torch.save(self, best_save_model)
+                            with open(best_save_model, "wb") as fp:
+                                pickle.dump(self.state_dict(), fp)
                             best_aupr = sklearn_ap
 
                         avg_train_loss = 0
@@ -474,4 +489,5 @@ class M6ANet(torch.nn.Module):
 
                 iteration += 1
 
-        torch.save(self, final_save_model)
+        with open(final_save_model, "wb") as fp:
+            pickle.dump(self.state_dict(), fp)

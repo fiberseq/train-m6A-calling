@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
+"""
+m6a_semi_supervised_cnn_predict.py
+Author: Anupama Jha <anupamaj@uw.edu>
+This script runs the m6A model to
+generate predictions and find score
+threshold corresponding 95% precision
+for the downstream fibertools pipeline.
+"""
 import torch
 import argparse
 import configparser
 import numpy as np
+from .m6a_cnn import M6ANet
 from .m6a_semi_supervised_cnn import tdc, count_pos_neg, make_one_hot_encoded
 
 
@@ -93,8 +102,8 @@ def make_ap_table(cnn_scores, precisions):
     # the minimum cnn score that achieves that precision
     t = (
         df.groupby("precision_u8")
-        .aggregate({"cnn_score": "min", "precision": "min"})
-        .reset_index()
+            .aggregate({"cnn_score": "min", "precision": "min"})
+            .reset_index()
     )
 
     t_json = t[["cnn_score", "precision_u8"]]
@@ -104,6 +113,20 @@ def make_ap_table(cnn_scores, precisions):
 
 
 def run(config_file, train_chem):
+    """
+    Run the m6A model to generate predictions
+    and find score threshold corresponding
+    95% precision for the downstream fibertools
+    pipeline.
+    :param config_file: str, path to the config
+                            file with all details
+    :param train_chem: str, section header from
+                            the config file with
+                            all resources for a
+                            Fiber-seq chemistry
+                            ML training. 
+    :return: None.
+    """
     # read parameters from config file
     config = configparser.ConfigParser()
     config.read(config_file)
@@ -126,7 +149,11 @@ def run(config_file, train_chem):
 
     # Load the model for
     # inference
-    model = torch.load(best_save_model, map_location=torch.device(device))
+    model = M6ANet()
+    with open(best_save_model, "rb") as fp:
+        model.load_state_dict(pickle.load(fp))
+        
+    model = model.to(device)
 
     # Get validation data.
     X_val, y_val, random_state = m6AGenerator(val_data, input_size, random_state=None)
@@ -151,8 +178,7 @@ def run(config_file, train_chem):
     # with sorted scores and precisions
     # without duplicates
     tbl_json, tbl_tsv = make_ap_table(sorted_scores, sorted_precision)
-    # store json to be used
-    # by fibertools
+    # store json to be used by fibertools
     tbl.to_json(score_ap_json, index=False, orient="split")
     # save table for
     # paper
@@ -169,8 +195,7 @@ def main():
         "--train_chem",
         type=str,
         default="train_2_2_chemistry",
-        choices=["train_2_2_chemistry", "train_3_2_chemistry", "train_revio_chemistry"],
-        help="which chemistry to validate.",
+        help="Which chemistry to validate. The name should match the section header in the config file.",
     )
 
     args = parser.parse_args()

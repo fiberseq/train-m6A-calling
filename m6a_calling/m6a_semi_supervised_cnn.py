@@ -20,6 +20,7 @@ import torch
 import argparse
 import numpy as np
 import configparser
+import _pickle as pickle
 from .m6a_cnn import M6ANet
 from torchsummary import summary
 from sklearn.metrics import average_precision_score, roc_auc_score
@@ -465,47 +466,53 @@ def run(config_file, train_chem):
 
     # get parameters for the relevant chemistry
     rel_config = config[train_chem]
+    # Number of input channels
     input_size = int(rel_config["input_size"])
-
+    # length of input sequence
     input_length = int(rel_config["input_length"])
-
+    # path to training data set
     train_data = rel_config["semi_train_data"]
-
+    # path to validation data set
     val_data = rel_config["semi_val_data"]
-
+    # cpu or cuda for training
     device = rel_config["device"]
-
+    # path to pretrained supervised model
     best_sup_save_model = rel_config["pretrain_model_name"]
-
+    # path to save best model
     best_save_model = rel_config["best_semi_supervised_model_name"]
-
+    # path to save final model
     final_save_model = rel_config["final_semi_supervised_model_name"]
-
+    # maximum number of epochs for training
     max_epochs = int(rel_config["semi_supervised_train_epochs"])
-
+    # FDR threshold for semi-supervised training
     fdr_threshold = float(rel_config["fdr"])
-
+    # save training results
     save_pos = rel_config["save_pos"]
-
+    # number of threads to process training data fetch
     num_workers = int(rel_config["semi_num_workers"])
-
+    # batch size of training data
     batch_size = int(rel_config["semi_batch_size"])
-
+    # Boolean value to indicate if we want to subsample training data
     train_sample = bool(rel_config["train_sample"])
-
+    # fraction of training data to sample
     train_sample_fraction = float(rel_config["train_sample_fraction"])
-
+    # Boolean value to indicate if we want to subsample validation data
     val_sample = bool(rel_config["val_sample"])
-
+    # fraction of validation data to sample
     val_sample_fraction = float(rel_config["val_sample_fraction"])
     # learning rate
     semi_lr = float(rel_config["semi_lr"])
-
+    # If we did sample, ensure the sample has at this fraction
+    # of m6A calls above FDR < 5%, otherwise resample
+    # upto 5 times. 
     min_pos_proportion = float(rel_config["min_pos_proportion"])
 
-    # Load the supervised model
-    # for transfer learning
-    model = torch.load(best_sup_save_model, map_location=torch.device(device))
+    # Load the supervised model for transfer learning
+    model = M6ANet()
+    with open(best_sup_save_model, "rb") as fp:
+        model.load_state_dict(pickle.load(fp))
+        
+    model = model.to(device)
 
     # Adam optimizer with learning
     # rate 1e-4
@@ -617,7 +624,7 @@ def run(config_file, train_chem):
     # Compute total number of positives
     # and negatives in the validation set
     val_pos_all, val_neg_all = count_pos_neg(y_val, set_name="Validation set")
-    print(f"Validation set has {val_pos_all} positives" f" and {val_neg_all} negatives")
+    print(f"Validation set has {val_pos_all} positives and {val_neg_all} negatives")
     print(
         f"Validation IPD average precision: "
         f"{sklearn_ap}, Number of positives "
@@ -776,8 +783,7 @@ def main():
         "--train_chem",
         type=str,
         default="train_2_2_chemistry",
-        choices=["train_2_2_chemistry", "train_3_2_chemistry", "train_revio_chemistry"],
-        help="which chemistry to train.",
+        help="Which chemistry to validate. The name should match the section header in the config file.",
     )
 
     args = parser.parse_args()
