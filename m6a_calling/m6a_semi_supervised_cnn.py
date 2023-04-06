@@ -493,11 +493,11 @@ def run(config_file, train_chem):
     # batch size of training data
     batch_size = int(rel_config["semi_batch_size"])
     # Boolean value to indicate if we want to subsample training data
-    train_sample = bool(rel_config["train_sample"])
+    train_sample = int(rel_config["train_sample"])==1
     # fraction of training data to sample
     train_sample_fraction = float(rel_config["train_sample_fraction"])
     # Boolean value to indicate if we want to subsample validation data
-    val_sample = bool(rel_config["val_sample"])
+    val_sample = int(rel_config["val_sample"])==1
     # fraction of validation data to sample
     val_sample_fraction = float(rel_config["val_sample_fraction"])
     # learning rate
@@ -506,6 +506,14 @@ def run(config_file, train_chem):
     # of m6A calls above FDR < 5%, otherwise resample
     # upto 5 times. 
     min_pos_proportion = float(rel_config["min_pos_proportion"])
+    # Used in the convergence criteria
+    # percent additional m6As identified from the validation set
+    # in the current iteration
+    add_m6a_percent = float(rel_config["add_m6a_percent"])
+    # percent total m6A identified from the validation set 
+    # so far
+    total_m6a_percent = float(rel_config["total_m6a_percent"])
+    
 
     # Load the supervised model for transfer learning
     model = M6ANet()
@@ -581,7 +589,8 @@ def run(config_file, train_chem):
         score_threshold, num_pos = compute_fdr_score(
             y_score_val, np.array(y_val, dtype=bool), fdr_threshold=fdr_threshold
         )
-
+        print(f"train_sample: {train_sample}")
+        print(f"val_sample: {val_sample}")
         pos_proportion = float(num_pos) / len(y_score_val)
         if pos_proportion >= min_pos_proportion:
             regenerate = False
@@ -759,11 +768,15 @@ def run(config_file, train_chem):
             val_ap=val_ap,
             val_score=val_scores,
         )
+        
 
         additional_pos = num_pos - all_num_pos[-2]
         add_pos_percent = (additional_pos / float(val_pos_all)) * 100
         num_pos_identified = (num_pos / float(val_pos_all)) * 100
-        if add_pos_percent < 1.0 and num_pos_identified > 70.0:
+        
+        # If more than total_m6a_percent m6As have been found and the increase in 
+        # additional m6As found is less than add_m6a_percent, then stop training.
+        if add_pos_percent < add_m6a_percent and num_pos_identified > total_m6a_percent:
             print(
                 f"New identified m6A are {add_pos_percent} (less than 1%),"
                 f" and total number of m6A identified are {num_pos_identified}."
@@ -776,7 +789,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--config_file", type=str, default="config.yml", help="path to the config file."
+        "--config_file", type=str, default="paper_v1/config.yml", help="path to the config file."
     )
 
     parser.add_argument(

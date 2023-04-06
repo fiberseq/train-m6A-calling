@@ -188,7 +188,7 @@ def run(config_file, train_chem):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--config_file", type=str, default="config.yml", help="path to the config file."
+        "--config_file", type=str, default="paper_v1/config.yml", help="path to the config file."
     )
 
     parser.add_argument(

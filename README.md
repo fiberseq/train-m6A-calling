@@ -1,4 +1,7 @@
-# m6A-calling
+# Fibertools: training supervised and semi-supervised CNN models for m6A detection from Fiber-seq HiFi reads. 
+
+This repository is for training supervised and semi-supervised convolutional neural network for m6A detection from Fiber-seq reads.
+
 
 # install
 ```
@@ -8,12 +11,52 @@ python -m pip install git+https://github.com/mrvollger/m6a-calling
 ```
 pip uninstall m6a-calling && pip install git+https://github.com/mrvollger/m6a-calling
 ```
-
-
-# training the first model 
+# Prepare data
+Download training and validation data for all three chemistries from Zenodo[TODO: add link] and set up requisite folders for saving models and results with the following instructions: 
 ```
-python m6a_calling/m6a_calling.py --train_data m6A_train.npz --device cpu --model_save_path  model.model 
+mkdir -p paper_v1/data
+cd paper_v1/data
+
+wget TODO: add link
+gzip -d TODO: add file name
+
+mkdir -p paper_v1/models
+mkdir -p paper_v1/results
+mkdir -p paper_v1/figures
 ```
+Ensure that the `sup_train_data`, `sup_val_data`, `semi_train_data` and `semi_val_data` variables in the `config.yml` file are pointing to the correct folder.
+
+## Training supervised CNN model
+
+You can run all three versions of the CNN model with the following commands: 
+
+`m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_2_2_chemistry`
+
+`m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_3_2_chemistry`
+
+`m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_revio_chemistry`
+
+All required resources are defined in the `config.yml` file. See configuration section for more details on the resources. 
+
+## Training semi-supervised CNN model
+
+To run the semi-supervised CNN model, run the following commands: 
+
+`m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_2_2_chemistry`
+
+`m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_3_2_chemistry`
+
+`m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_revio_chemistry`
+
+## Inference on semi-supervised model
+
+To generate precision at different CNN scores for all chemistries, run the following commands:
+
+`m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_2_2_chemistry`
+
+`m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_3_2_chemistry`
+
+`m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_revio_chemistry`
 
 # make training data
 ```bash

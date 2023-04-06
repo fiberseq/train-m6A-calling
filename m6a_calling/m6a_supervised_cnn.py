@@ -15,6 +15,7 @@ import torch
 import argparse
 import numpy as np
 import configparser
+import _pickle as pickle
 from .m6a_cnn import M6ANet
 from torchsummary import summary
 
@@ -96,11 +97,7 @@ def m6AGenerator(
     input_size,
     pin_memory=True,
     num_workers=0,
-    batch_size=32,
-    train_sample=False,
-    train_sample_fraction=0.05,
-    val_sample=False,
-    val_sample_fraction=0.05,
+    batch_size=32
 ):
     """
     This generator returns a training
@@ -118,12 +115,6 @@ def m6AGenerator(
                              for data generator.
     :param batch_size: int, number of examples
                             in each batch
-    :param train_sample: bool, sample train data
-    :param train_sample_fraction: float, what fraction
-                                         to sample
-    :param val_sample: bool, sample validation data
-    :param val_sample_fraction: float, what fraction
-                                       to sample
     :return: X_gen: training data generator,
              X_val: validation features,
              y_val: validation labels
@@ -139,17 +130,6 @@ def m6AGenerator(
     X_train = X_train[:, 0:input_size, :]
     y_train = train_data["labels"]
 
-    # If data set is large,
-    # we can sample a subset
-    if train_sample:
-        rand_val = np.random.choice(
-            np.arange(len(y_train), dtype=int),
-            size=(int(train_sample_fraction * len(y_train)),),
-            replace=False,
-        )
-
-        X_train = X_train[rand_val, :, :]
-        y_train = y_train[rand_val]
 
     # One-hot-encode train labels
     y_train_ohe = make_one_hot_encoded(y_train)
@@ -160,18 +140,6 @@ def m6AGenerator(
     X_val = val_data["features"]
     X_val = X_val[:, 0:input_size, :]
     y_val = val_data["labels"]
-
-    # If data set is large,
-    # we can sample a subset
-    if val_sample:
-        rand_val = np.random.choice(
-            np.arange(len(y_val), dtype=int),
-            size=(int(val_sample_fraction * len(y_val)),),
-            replace=False,
-        )
-
-        X_val = X_val[rand_val, :, :]
-        y_val = y_val[rand_val]
 
     # One-hot-encode val labels
     y_val_ohe = make_one_hot_encoded(y_val)
@@ -257,7 +225,7 @@ def run(config_file, train_chem):
         input_size=input_size,
         pin_memory=True,
         num_workers=num_workers,
-        batch_size=batch_size,
+        batch_size=batch_size
     )
 
     validation_iter = int(np.floor(len(X_train) / (batch_size * 10.0)))
@@ -280,7 +248,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--config_file", type=str, default="config.yml", help="path to the config file."
+        "--config_file", type=str, default="paper_v1/config.yml", help="path to the config file."
     )
 
     parser.add_argument(

@@ -12,6 +12,7 @@ convolution neural network.
 
 import torch
 import numpy as np
+import _pickle as pickle
 from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score
 
 verbose = False
