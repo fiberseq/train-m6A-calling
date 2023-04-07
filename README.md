@@ -3,11 +3,11 @@
 This repository is for training supervised and semi-supervised convolutional neural network for m6A detection from Fiber-seq reads.
 
 
-## install
+## Install
 ```
 python -m pip install git+https://github.com/mrvollger/m6a-calling
 ```
-## reinstall
+## Reinstall
 ```
 pip uninstall m6a-calling && pip install git+https://github.com/mrvollger/m6a-calling
 ```
