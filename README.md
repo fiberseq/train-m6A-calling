@@ -3,32 +3,46 @@
 This repository is for training supervised and semi-supervised convolutional neural network for m6A detection from Fiber-seq reads.
 
 
-## install
+## Install
 ```
 python -m pip install git+https://github.com/mrvollger/m6a-calling
 ```
-## reinstall
+## Reinstall
 ```
 pip uninstall m6a-calling && pip install git+https://github.com/mrvollger/m6a-calling
 ```
-## Prepare data
-Download training and validation data for all three chemistries from Zenodo[TODO: add link] and set up requisite folders for saving models and results with the following instructions: 
+
+## Make training data
 ```bash
-mkdir -p paper_v1/data
-cd paper_v1/data
+m6adata \
+  --threads 20 - \ 
+  --hifi fiberseq.bam \ # input fiberseq bam file
+  -o output.ml.npz \ # training data for a ML model
+  --train \ # must be included
+  -s 0.03 \ # sample just 3% of the data
+  --is_u16 \ # has u16 kinetics values 
+  -m 244 \ # min ML value to include in training
+  --ec 6 \ # minimum CCS coverage to use in training
+```
 
-wget TODO: add link
-gzip -d TODO: add file name
-
+## Download data for existing models
+Download training and validation data for all three chemistries from [Zenodo](https://zenodo.org/record/7809229) and set up requisite folders for saving models and results with the following instructions: 
+```bash
 mkdir -p paper_v1/models
 mkdir -p paper_v1/results
 mkdir -p paper_v1/figures
+
+mkdir -p paper_v1/data
+cd paper_v1/data
+
+wget https://zenodo.org/record/7809229/files/fibertoolsMLTrain.tar.gz
+tar -zxvf fibertoolsMLTrain.tar.gz
 ```
 Ensure that the `sup_train_data`, `sup_val_data`, `semi_train_data` and `semi_val_data` variables in the `config.yml` file are pointing to the correct folder.
 
-## Training supervised CNN model
+## Train supervised CNN model
 
-You can run all three versions of the CNN model with the following commands: 
+You can run all three versions of the fully supervised CNN model with the following commands: 
 
 ```bash
 m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_2_2_chemistry
@@ -38,11 +52,11 @@ m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_3_2_chem
 m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_revio_chemistry
 ```
 
-All required resources are defined in the `config.yml` file. See configuration section for more details on the resources. 
+All required resources are defined in the `config.yml` file. See `Train new Fiber-seq chemistry models` section for more details on the resources. 
 
-## Training semi-supervised CNN model
+## Train semi-supervised CNN model
 
-To run the semi-supervised CNN model, run the following commands: 
+To run the semi-supervised CNN models, run the following commands: 
 
 ```bash
 m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_2_2_chemistry
@@ -64,20 +78,7 @@ m6a_semi_supervised_cnn_predict --config_file paper_v1/config.yml --train_chem t
 m6a_semi_supervised_cnn_predict --config_file paper_v1/config.yml --train_chem train_revio_chemistry
 ```
 
-## Make training data
-```bash
-m6adata \
-  --threads 20 - \ 
-  --hifi fiberseq.bam \ # input fiberseq bam file
-  -o output.ml.npz \ # training data for a ML model
-  --train \ # must be included
-  -s 0.03 \ # sample just 3% of the data
-  --is_u16 \ # has u16 kinetics values 
-  -m 244 \ # min ML value to include in training
-  --ec 6 \ # minimum CCS coverage to use in training
-```
-
-## Training new chemistry models
+## Train new Fiber-seq chemistry models
 To train semi-supervised CNN model for a new chemistry, you first need to generate a config file entry. The configuration file is divided into three sections, one section for each new chemistry. For training a model for a new chemistry, simply add the required resources in the `config.yml` file under a new header. Then run the following commands: 
 
 ```bash
