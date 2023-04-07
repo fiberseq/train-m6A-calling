@@ -9,8 +9,10 @@ for the downstream fibertools pipeline.
 """
 import torch
 import argparse
-import configparser
 import numpy as np
+import configparser
+import pandas as pd
+import _pickle as pickle
 from .m6a_cnn import M6ANet
 from .m6a_semi_supervised_cnn import tdc, count_pos_neg, make_one_hot_encoded
 
@@ -135,7 +137,7 @@ def run(config_file, train_chem):
     rel_config = config[train_chem]
     input_size = int(rel_config["input_size"])
     # path to validation data
-    val_data = rel_config["val_data"]
+    val_data = rel_config["semi_val_data"]
     # run inference on cpu or cuda
     device = rel_config["device"]
     # path to model to use
@@ -179,7 +181,7 @@ def run(config_file, train_chem):
     # without duplicates
     tbl_json, tbl_tsv = make_ap_table(sorted_scores, sorted_precision)
     # store json to be used by fibertools
-    tbl.to_json(score_ap_json, index=False, orient="split")
+    tbl_json.to_json(score_ap_json, index=False, orient="split")
     # save table for
     # paper
     tbl_tsv.to_csv(score_ap_table, sep="\t")
