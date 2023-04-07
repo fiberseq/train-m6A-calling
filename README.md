@@ -11,7 +11,21 @@ python -m pip install git+https://github.com/mrvollger/m6a-calling
 ```
 pip uninstall m6a-calling && pip install git+https://github.com/mrvollger/m6a-calling
 ```
-## Prepare data
+
+## Make training data
+```bash
+m6adata \
+  --threads 20 - \ 
+  --hifi fiberseq.bam \ # input fiberseq bam file
+  -o output.ml.npz \ # training data for a ML model
+  --train \ # must be included
+  -s 0.03 \ # sample just 3% of the data
+  --is_u16 \ # has u16 kinetics values 
+  -m 244 \ # min ML value to include in training
+  --ec 6 \ # minimum CCS coverage to use in training
+```
+
+## Download data for existing models
 Download training and validation data for all three chemistries from [Zenodo](https://zenodo.org/record/7809229) and set up requisite folders for saving models and results with the following instructions: 
 ```bash
 mkdir -p paper_v1/models
@@ -38,7 +52,7 @@ m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_3_2_chem
 m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_revio_chemistry
 ```
 
-All required resources are defined in the `config.yml` file. See configuration section for more details on the resources. 
+All required resources are defined in the `config.yml` file. See `Train new Fiber-seq chemistry models` section for more details on the resources. 
 
 ## Train semi-supervised CNN model
 
@@ -62,19 +76,6 @@ m6a_semi_supervised_cnn_predict --config_file paper_v1/config.yml --train_chem t
 m6a_semi_supervised_cnn_predict --config_file paper_v1/config.yml --train_chem train_3_2_chemistry
 
 m6a_semi_supervised_cnn_predict --config_file paper_v1/config.yml --train_chem train_revio_chemistry
-```
-
-## Make training data
-```bash
-m6adata \
-  --threads 20 - \ 
-  --hifi fiberseq.bam \ # input fiberseq bam file
-  -o output.ml.npz \ # training data for a ML model
-  --train \ # must be included
-  -s 0.03 \ # sample just 3% of the data
-  --is_u16 \ # has u16 kinetics values 
-  -m 244 \ # min ML value to include in training
-  --ec 6 \ # minimum CCS coverage to use in training
 ```
 
 ## Train new Fiber-seq chemistry models
