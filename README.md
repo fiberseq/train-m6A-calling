@@ -3,15 +3,15 @@
 This repository is for training supervised and semi-supervised convolutional neural network for m6A detection from Fiber-seq reads.
 
 
-# install
+## install
 ```
 python -m pip install git+https://github.com/mrvollger/m6a-calling
 ```
-# reinstall
+## reinstall
 ```
 pip uninstall m6a-calling && pip install git+https://github.com/mrvollger/m6a-calling
 ```
-# Prepare data
+## Prepare data
 Download training and validation data for all three chemistries from Zenodo[TODO: add link] and set up requisite folders for saving models and results with the following instructions: 
 ```bash
 mkdir -p paper_v1/data
