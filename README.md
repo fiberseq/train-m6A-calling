@@ -57,11 +57,11 @@ m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_rev
 To generate precision at different CNN scores for all chemistries, run the following commands:
 
 ```bash
-m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_2_2_chemistry
+m6a_semi_supervised_cnn_predict --config_file paper_v1/config.yml --train_chem train_2_2_chemistry
 
-m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_3_2_chemistry
+m6a_semi_supervised_cnn_predict --config_file paper_v1/config.yml --train_chem train_3_2_chemistry
 
-m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_revio_chemistry
+m6a_semi_supervised_cnn_predict --config_file paper_v1/config.yml --train_chem train_revio_chemistry
 ```
 
 ## Make training data
