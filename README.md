@@ -12,13 +12,13 @@ python -m pip install git+https://github.com/mrvollger/m6a-calling
 pip uninstall m6a-calling && pip install git+https://github.com/mrvollger/m6a-calling
 ```
 ## Prepare data
-Download training and validation data for all three chemistries from Zenodo[TODO: add link] and set up requisite folders for saving models and results with the following instructions: 
+Download training and validation data for all three chemistries from [Zenodo](https://zenodo.org/record/7809229) and set up requisite folders for saving models and results with the following instructions: 
 ```bash
 mkdir -p paper_v1/data
 cd paper_v1/data
 
-wget TODO: add link
-gzip -d TODO: add file name
+wget https://zenodo.org/record/7809229/files/fibertoolsMLTrain.tar.gz
+tar -zxvf fibertoolsMLTrain.tar.gz
 
 mkdir -p paper_v1/models
 mkdir -p paper_v1/results
