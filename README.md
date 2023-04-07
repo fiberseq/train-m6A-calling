@@ -64,7 +64,7 @@ m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_3_2_chemi
 m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_revio_chemistry
 ```
 
-# make training data
+## make training data
 ```bash
 m6adata \
   --threads 20 - \ 
