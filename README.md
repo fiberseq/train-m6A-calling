@@ -42,7 +42,7 @@ Ensure that the `sup_train_data`, `sup_val_data`, `semi_train_data` and `semi_va
 
 ## Train supervised CNN model
 
-You can run all three versions of the CNN model with the following commands: 
+You can run all three versions of the fully supervised CNN model with the following commands: 
 
 ```bash
 m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_2_2_chemistry
@@ -56,7 +56,7 @@ All required resources are defined in the `config.yml` file. See `Train new Fibe
 
 ## Train semi-supervised CNN model
 
-To run the semi-supervised CNN model, run the following commands: 
+To run the semi-supervised CNN models, run the following commands: 
 
 ```bash
 m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_2_2_chemistry
