@@ -6,7 +6,7 @@ m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem <train_new_che
 
 m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem <train_new_chemistry>
 
-m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem <train_new_chemistry>
+m6a_semi_supervised_cnn_predict --config_file paper_v1/config.yml --train_chem <train_new_chemistry>
 ```
 
 Here is an example resources section: 
