@@ -241,6 +241,7 @@ def run(config_file, train_chem):
         device=device,
         best_save_model=best_save_model,
         final_save_model=final_save_model,
+        input_example=(1, input_size, input_length)
     )
 
 

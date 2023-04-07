@@ -704,7 +704,8 @@ def run(config_file, train_chem):
             device=device,
             prev_aupr=sklearn_ap,
             best_save_model=best_save_model,
-            final_save_model=final_save_model,
+            final_save_model=final_save_model, 
+            input_example=(1, input_size, input_length)
         )
 
         sklearn_ap = model.evaluate(X_val, y_val_ohe, device=device)

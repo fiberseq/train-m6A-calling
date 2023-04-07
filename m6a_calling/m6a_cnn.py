@@ -197,6 +197,7 @@ class M6ANet(torch.nn.Module):
             best_save_model="",
             final_save_model="",
             prev_aupr=0,
+            input_example=(1, 6, 15)
     ):
         """
         Training procedure for the semi-supervised version
@@ -331,6 +332,10 @@ class M6ANet(torch.nn.Module):
                             with open(best_save_model, "wb") as fp:
                                 pickle.dump(self.state_dict(), fp)
                             best_aupr = sklearn_ap
+                            # save rust model
+                            example = torch.rand(input_example).float().to(device)
+                            traced_script_module = torch.jit.trace(self, example)
+                            traced_script_module.save(f"{best_save_model}.pt")
 
                         avg_train_loss = 0
                         avg_train_iter = 0
@@ -339,6 +344,11 @@ class M6ANet(torch.nn.Module):
 
         with open(final_save_model, "wb") as fp:
             pickle.dump(self.state_dict(), fp)
+        # save rust model
+        example = torch.rand(input_example).float().to(device)
+        traced_script_module = torch.jit.trace(self, example)
+        traced_script_module.save(f"{final_save_model}.pt")
+        
 
     def fit_supervised(
             self,
@@ -351,6 +361,7 @@ class M6ANet(torch.nn.Module):
             device="cpu",
             best_save_model="",
             final_save_model="",
+            input_example=(1, 6, 15)
     ):
         """
         Training procedure for the supervised version
@@ -484,6 +495,10 @@ class M6ANet(torch.nn.Module):
                             with open(best_save_model, "wb") as fp:
                                 pickle.dump(self.state_dict(), fp)
                             best_aupr = sklearn_ap
+                            # save rust model
+                            example = torch.rand(input_example).float().to(device)
+                            traced_script_module = torch.jit.trace(self, example)
+                            traced_script_module.save(f"{best_save_model}.pt")
 
                         avg_train_loss = 0
                         avg_train_iter = 0
@@ -492,3 +507,8 @@ class M6ANet(torch.nn.Module):
 
         with open(final_save_model, "wb") as fp:
             pickle.dump(self.state_dict(), fp)
+        
+        # save rust model
+        example = torch.rand(input_example).float().to(device)
+        traced_script_module = torch.jit.trace(self, example)
+        traced_script_module.save(f"{final_save_model}.pt")
