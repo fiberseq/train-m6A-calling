@@ -13,7 +13,7 @@ pip uninstall m6a-calling && pip install git+https://github.com/mrvollger/m6a-ca
 ```
 # Prepare data
 Download training and validation data for all three chemistries from Zenodo[TODO: add link] and set up requisite folders for saving models and results with the following instructions: 
-```
+```bash
 mkdir -p paper_v1/data
 cd paper_v1/data
 
@@ -30,11 +30,13 @@ Ensure that the `sup_train_data`, `sup_val_data`, `semi_train_data` and `semi_va
 
 You can run all three versions of the CNN model with the following commands: 
 
-`m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_2_2_chemistry`
+```bash
+m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_2_2_chemistry
 
-`m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_3_2_chemistry`
+m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_3_2_chemistry
 
-`m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_revio_chemistry`
+m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_revio_chemistry
+```
 
 All required resources are defined in the `config.yml` file. See configuration section for more details on the resources. 
 
@@ -42,21 +44,25 @@ All required resources are defined in the `config.yml` file. See configuration s
 
 To run the semi-supervised CNN model, run the following commands: 
 
-`m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_2_2_chemistry`
+```bash
+m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_2_2_chemistry
 
-`m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_3_2_chemistry`
+m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_3_2_chemistry
 
-`m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_revio_chemistry`
+m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem train_revio_chemistry
+```
 
 ## Inference on semi-supervised model
 
 To generate precision at different CNN scores for all chemistries, run the following commands:
 
-`m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_2_2_chemistry`
+```bash
+m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_2_2_chemistry
 
-`m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_3_2_chemistry`
+m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_3_2_chemistry
 
-`m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_revio_chemistry`
+m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem train_revio_chemistry
+```
 
 # make training data
 ```bash

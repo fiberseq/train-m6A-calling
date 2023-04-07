@@ -1,11 +1,13 @@
 # Training new chemistry models
 To train semi-supervised CNN model for a new chemistry, you first need to generate a config file entry. The configuration file is divided into three sections, one section for each new chemistry. For training a model for a new chemistry, simply add the required resources in the `config.yml` file under a new header. Then run the following commands: 
 
-`m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem <train_new_chemistry>`
+```bash
+m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem <train_new_chemistry>
 
-`m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem <train_new_chemistry>`
+m6a_semi_supervised_cnn --config_file paper_v1/config.yml --train_chem <train_new_chemistry>
 
-`m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem <train_new_chemistry>`
+m6a_semi_supervised_cnn_predict paper_v1/config.yml --train_chem <train_new_chemistry>
+```
 
 Here is an example resources section: 
 
@@ -76,6 +78,7 @@ save_pos: path to save validation AUPR and # positives identified in validation 
 score_ap_json: json for cnn score to u8 precision conversion
 score_ap_table: table with cnn scores, precision and u8 precision
 ```
+
 
 
 
