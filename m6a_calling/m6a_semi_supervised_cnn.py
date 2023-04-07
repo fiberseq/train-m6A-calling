@@ -589,8 +589,6 @@ def run(config_file, train_chem):
         score_threshold, num_pos = compute_fdr_score(
             y_score_val, np.array(y_val, dtype=bool), fdr_threshold=fdr_threshold
         )
-        print(f"train_sample: {train_sample}")
-        print(f"val_sample: {val_sample}")
         pos_proportion = float(num_pos) / len(y_score_val)
         if pos_proportion >= min_pos_proportion:
             regenerate = False
