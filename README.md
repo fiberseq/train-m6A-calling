@@ -26,7 +26,7 @@ mkdir -p paper_v1/figures
 ```
 Ensure that the `sup_train_data`, `sup_val_data`, `semi_train_data` and `semi_val_data` variables in the `config.yml` file are pointing to the correct folder.
 
-## Training supervised CNN model
+## Train supervised CNN model
 
 You can run all three versions of the CNN model with the following commands: 
 
@@ -40,7 +40,7 @@ m6a_supervised_cnn --config_file paper_v1/config.yml --train_chem train_revio_ch
 
 All required resources are defined in the `config.yml` file. See configuration section for more details on the resources. 
 
-## Training semi-supervised CNN model
+## Train semi-supervised CNN model
 
 To run the semi-supervised CNN model, run the following commands: 
 
@@ -77,7 +77,7 @@ m6adata \
   --ec 6 \ # minimum CCS coverage to use in training
 ```
 
-## Training new chemistry models
+## Train new Fiber-seq chemistry models
 To train semi-supervised CNN model for a new chemistry, you first need to generate a config file entry. The configuration file is divided into three sections, one section for each new chemistry. For training a model for a new chemistry, simply add the required resources in the `config.yml` file under a new header. Then run the following commands: 
 
 ```bash
