@@ -777,8 +777,8 @@ def run(config_file, train_chem):
         # additional m6As found is less than add_m6a_percent, then stop training.
         if add_pos_percent < add_m6a_percent and num_pos_identified > total_m6a_percent:
             print(
-                f"New identified m6A are {add_pos_percent} (less than 1%),"
-                f" and total number of m6A identified are {num_pos_identified}."
+                f"New identified m6A are {add_pos_percent:.2f}% (less than 1%),"
+                f" and total number of m6A identified are {num_pos_identified:.2f}%."
                 f" Convergence reached, stopping training. "
             )
             break
