@@ -21,7 +21,7 @@ import argparse
 import numpy as np
 import configparser
 import _pickle as pickle
-from .m6a_cnn import M6ANet
+from .m6a_cnn_gen import M6ANet
 from torchsummary import summary
 from sklearn.metrics import average_precision_score, roc_auc_score
 
@@ -692,7 +692,8 @@ def run(config_file, train_chem, smart_init):
             shuffle=True,
         )
 
-        validation_iter = int(np.floor(len(y_init_ohe) / (batch_size)))
+        validation_iter = int(np.floor(len(y_init_ohe) / (batch_size*10.0)))
+        print(f"validation_iter: {validation_iter}")
 
         # Train the model
         model.fit_semisupervised(
@@ -700,7 +701,7 @@ def run(config_file, train_chem, smart_init):
             optimizer,
             X_valid=X_val,
             y_valid=y_val_ohe,
-            max_epochs=2,
+            max_epochs=1,
             validation_iter=validation_iter,
             device=device,
             prev_aupr=sklearn_ap,

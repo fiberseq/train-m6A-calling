@@ -8,3 +8,6 @@ from .m6a_cnn import *
 from .m6a_supervised_cnn import *
 from .m6a_semi_supervised_cnn import *
 from .m6a_semi_supervised_cnn_predict import *
+
+from .m6a_cnn_gen import *
+from .m6a_semi_supervised_cnn_gen import *

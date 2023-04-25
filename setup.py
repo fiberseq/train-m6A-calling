@@ -38,6 +38,8 @@ setup(
             "m6a_semi_supervised_cnn=m6a_calling.m6a_semi_supervised_cnn:main",
             "m6a_semi_supervised_cnn_predict=m6a_calling.m6a_semi_supervised_cnn_predict:main",
             "m6a_supervised_cnn=m6a_calling.m6a_supervised_cnn:main",
+            "m6a_semi_supervised_cnn_gen=m6a_calling.m6a_semi_supervised_cnn_gen:main",
+            "m6a_semi_supervised_cnn_predict_gen=m6a_calling.m6a_semi_supervised_cnn_predict_gen:main",
         ],
     },
     install_requires=requirements,
