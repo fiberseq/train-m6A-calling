@@ -95,6 +95,7 @@ def m6AGenerator(
     train_path,
     val_path,
     input_size,
+    input_window,
     pin_memory=True,
     num_workers=0,
     batch_size=32
@@ -127,8 +128,15 @@ def m6AGenerator(
     # we want to train on input subsets,
     # this will achieve that.
     
+    
+    
     X_train = train_data["features"]
-    X_train = X_train[:, 0:input_size, :]
+    
+    mid = int(np.floor(X_train.shape[2]/2.0))
+    start = mid-input_window
+    end = (mid+input_window+1)
+    
+    X_train = X_train[:, 0:input_size, start:end]
     y_train = train_data["labels"]
 
 
@@ -139,7 +147,7 @@ def m6AGenerator(
     val_data = np.load(val_path, allow_pickle=True)
 
     X_val = val_data["features"]
-    X_val = X_val[:, 0:input_size, :]
+    X_val = X_val[:, 0:input_size, start:end]
     y_val = val_data["labels"]
 
     # One-hot-encode val labels
@@ -188,6 +196,8 @@ def run(config_file, train_chem):
     input_size = int(rel_config["input_size"])
     # length of input sequence
     input_length = int(rel_config["input_length"])
+    # Window size next to central base
+    input_window = int(rel_config["input_window"])
     # path to training data set
     train_data = rel_config["sup_train_data"]
     # path to validation data set
@@ -206,10 +216,30 @@ def run(config_file, train_chem):
     batch_size = int(rel_config["sup_batch_size"])
     # learning rate
     sup_lr = float(rel_config["sup_lr"])
+    # model architecture
+    sec_last_layer_size = int(rel_config["sec_last_layer_size"])
+    last_layer_size = int(rel_config["last_layer_size"])
+    out_channels_1 = int(rel_config["out_channels_1"])
+    out_channels_2 = int(rel_config["out_channels_2"])
+    out_channel_3 = int(rel_config["out_channel_3"])
+    kernel_size_1 = int(rel_config["kernel_size_1"])
+    kernel_size_2 = int(rel_config["kernel_size_2"])
+    kernel_size_3 = int(rel_config["kernel_size_3"])
+    output_shape = int(rel_config["output_shape"])
+    
 
     # Move the model to appropriate
     # device
-    model = M6ANet(input_size=input_size).to(device)
+    model = M6ANet(input_size=input_size, 
+                   sec_last_layer_size=sec_last_layer_size,
+                   last_layer_size=last_layer_size,
+                   output_shape=output_shape, 
+                   out_channels_1=out_channels_1,
+                   out_channels_2=out_channels_2,
+                   out_channel_3=out_channel_3,
+                   kernel_size_1=kernel_size_1,
+                   kernel_size_2=kernel_size_2,
+                   kernel_size_3=kernel_size_3).to(device)
 
     # Adam optimizer with learning
     # rate 1e-4
@@ -224,6 +254,7 @@ def run(config_file, train_chem):
         train_data,
         val_data,
         input_size=input_size,
+        input_window=input_window,
         pin_memory=True,
         num_workers=num_workers,
         batch_size=batch_size

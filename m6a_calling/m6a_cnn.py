@@ -20,7 +20,9 @@ verbose = False
 
 class M6ANet(torch.nn.Module):
     def __init__(
-            self, input_size=6, sec_last_layer_size=25, last_layer_size=5, output_shape=2
+            self, input_size=6, sec_last_layer_size=25, last_layer_size=5, output_shape=2, 
+            out_channels_1=30, out_channels_2=10, out_channel_3=5,
+            kernel_size_1=5, kernel_size_2=5, kernel_size_3=3
     ):
         """
         Constructor for the M6ANet, a CNN
@@ -44,19 +46,19 @@ class M6ANet(torch.nn.Module):
 
         # Three convolution layers with ReLU activation
         self.conv_1 = torch.nn.Conv1d(
-            in_channels=input_size, out_channels=30, kernel_size=5, stride=1
+            in_channels=input_size, out_channels=out_channels_1, kernel_size=kernel_size_1, stride=1
         )
 
         self.relu_1 = torch.nn.ReLU()
 
         self.conv_2 = torch.nn.Conv1d(
-            in_channels=30, out_channels=10, kernel_size=5, stride=1
+            in_channels=out_channels_1, out_channels=out_channels_2, kernel_size=kernel_size_2, stride=1
         )
 
         self.relu_2 = torch.nn.ReLU()
 
         self.conv_3 = torch.nn.Conv1d(
-            in_channels=10, out_channels=5, kernel_size=3, stride=1
+            in_channels=out_channels_2, out_channels=out_channel_3, kernel_size=kernel_size_3, stride=1
         )
 
         self.relu_3 = torch.nn.ReLU()
