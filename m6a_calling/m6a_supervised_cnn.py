@@ -95,6 +95,7 @@ def m6AGenerator(
     train_path,
     val_path,
     input_size,
+    input_window,
     pin_memory=True,
     num_workers=0,
     batch_size=32
@@ -126,8 +127,16 @@ def m6AGenerator(
     # features and labels. Sometimes
     # we want to train on input subsets,
     # this will achieve that.
+    
+    
+    
     X_train = train_data["features"]
-    X_train = X_train[:, 0:input_size, :]
+    
+    mid = int(np.floor(X_train.shape[2]/2.0))
+    start = mid-input_window
+    end = mid+input_window
+    
+    X_train = X_train[:, 0:input_size, start:end]
     y_train = train_data["labels"]
 
 
@@ -187,6 +196,8 @@ def run(config_file, train_chem):
     input_size = int(rel_config["input_size"])
     # length of input sequence
     input_length = int(rel_config["input_length"])
+    # Window size next to central base
+    input_window = int(rel_config["input_window"])
     # path to training data set
     train_data = rel_config["sup_train_data"]
     # path to validation data set
@@ -223,6 +234,7 @@ def run(config_file, train_chem):
         train_data,
         val_data,
         input_size=input_size,
+        input_window=input_window,
         pin_memory=True,
         num_workers=num_workers,
         batch_size=batch_size
