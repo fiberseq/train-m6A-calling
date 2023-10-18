@@ -10,6 +10,7 @@ import pandas as pd
 import argparse
 import pysam
 import re
+import sys
 
 CPG_MODS = [("C", 0, "m"), ("C", 1, "m")]
 M6A_MODS = [("A", 0, "a"), ("T", 1, "a"), ("A", 1, "a"), ("T", 0, "a")]
@@ -154,10 +155,15 @@ def main(args):
         output : str
             The path to the output file.
 """
-    bamfile = pysam.AlignmentFile(args.bam_file, "rb", check_sq=False)
+    bamfile = pysam.AlignmentFile(args.bam_file, "rb", check_sq=False, until_eof=True)
     chunk_list = []
     out_index = 0
     for i, rec in enumerate(bamfile):
+        # only process unaligned data
+        if rec.is_mapped:
+            print(f"WARNING: {rec.query_name} is aligned, skipping.", file=sys.stderr)
+            continue
+            
         chunk = process_rec(rec, n_context=args.n_context, 
                                       n_sites=args.sites_per_read)
         if chunk is not None:
