@@ -3,7 +3,7 @@
 """
 Created on Mon Aug 28 11:33:44 2023
 
-@author: morgan
+@author: morgan hamm
 """
 import numpy as np
 import pandas as pd
@@ -17,7 +17,7 @@ M6A_MODS = [("A", 0, "a"), ("T", 1, "a"), ("A", 1, "a"), ("T", 0, "a")]
 
 
 def fast_one_hot(seq_array, alphabet=list("ACGT")):
-    # seq_array = np.array([list(seq) for seq in sequences])
+    """convert a 2d sequence array into a 3d one-hot encoded array"""
     stack_list = [np.array(seq_array == char, dtype=np.uint8) for char in alphabet]
     one_hot = np.stack(stack_list)
     one_hot = np.moveaxis(one_hot, [0, 1, 2], [1, 0, 2])
@@ -73,7 +73,7 @@ def build_mod_seq(rec, mod_bases):
     Returns
     -------
     mod_seq : numpy.ndarray
-        A 1D array with length equal to len(seq.query_sequence). modified base
+        A 1D array with length equal to len(rec.query_sequence). modified base
         scores are present at their positions along the array, all other values
         are zero.
     """
@@ -82,16 +82,18 @@ def build_mod_seq(rec, mod_bases):
         mod_seq[row[0]] = row[1]
     return(mod_seq)
 
-def process_rec(rec, n_context=7, n_sites=1e6):
+def process_rec(rec, n_context=7, n_sites=1e8):
     """
     Parameters
     ----------
     rec : pysam.libcalignedsegment.AlignedSegment
         A record containing modified bases.
     n_context : integer
-        number of bases on either side of each methylation call to include
-    tags : list, optional
-        list of bam tags to include ie. ['qs', 'du', 'ts']
+        number of bases on either side of each methylation call to include.
+    n_sites : integer
+        the number of sites in the record to include in the output. 
+        if n_sites < # of As, sites will be picked at random. 
+        default of 1e8 should ensure all As are included.
     """
     mod_bases = get_mod_bases(rec, mods=M6A_MODS)
     
@@ -111,7 +113,6 @@ def process_rec(rec, n_context=7, n_sites=1e6):
     # remove mods too close to start or end of sequence.
     mod_bases = mod_bases[(mod_bases[:,0] - n_context >= 0) & 
                            (mod_bases[:,0] + n_context + 1 <= len(rec.query_sequence))]
-    
     
     if mod_bases.shape[0] == 0:
         return(None)
@@ -152,9 +153,15 @@ def main(args):
             The path to the bam file.
         n_context : int, optional
             Number of bases on either side of each methylation call to include.
-        output : str
-            The path to the output file.
-"""
+        reads_per_output: int
+            number of reads to process for each output.
+        sites_per_read: int
+            max number of m6A sites to process for each read.
+        label: int
+            the label for all data from this file: 1=mixed positive, 0=negative.
+        output_prefix : str
+            output file name prefix.
+    """
     bamfile = pysam.AlignmentFile(args.bam_file, "rb", check_sq=False, until_eof=True)
     chunk_list = []
     out_index = 0
@@ -177,14 +184,10 @@ def main(args):
     return(None)
 
 def write_output(chunk_list, label, out_index, output_prefix):
-    
+    """ write out to a file"""
     merged_out = {key: np.concatenate([i[key] for i in chunk_list]) for key in ['read_id', 'features', 
             'length', 'position', 'qs']}
-    
     merged_out['label'] = np.repeat(label, merged_out['features'].shape[0])
-    
-    
-
     output_file = "{}_{:02d}.npz".format(output_prefix, out_index)
     np.savez(output_file, 
              features=merged_out['features'],
