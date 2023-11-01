@@ -122,12 +122,13 @@ def process_rec(rec, n_context=7, n_sites=1e8):
     seq_onehot = fast_one_hot(seq_array)
     
     qual_array = np.array([list(rec.query_qualities[row[0]-n_context:row[0]+n_context+1]) 
-                                   for row in mod_bases], dtype=np.uint8)
+                                   for row in mod_bases], dtype=np.uint8)/255
     
     score_array = np.array([list(mod_seq[row[0]-n_context:row[0]+n_context+1]) 
-                                   for row in mod_bases], dtype=np.uint8)  
+                                   for row in mod_bases], dtype=np.uint8)/255 
     
-    features = np.concatenate((seq_onehot, qual_array[:, np.newaxis, :], score_array[:, np.newaxis,:]), axis=1)
+    features = np.concatenate((seq_onehot, qual_array[:, np.newaxis, :], 
+                               score_array[:, np.newaxis,:]), axis=1, dtype=float)
     
     if rec.has_tag('qs'):
         qs = rec.get_tag('qs')
